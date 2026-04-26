@@ -1,0 +1,16 @@
+{
+    "name": "GunSlugsClone.Weapons",
+    "rootNamespace": "GunSlugsClone.Weapons",
+    "references": [
+        "GunSlugsClone.Core"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

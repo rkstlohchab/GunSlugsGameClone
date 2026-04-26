@@ -1,0 +1,19 @@
+{
+    "name": "GunSlugsClone.Procedural",
+    "rootNamespace": "GunSlugsClone.Procedural",
+    "references": [
+        "GunSlugsClone.Core",
+        "GunSlugsClone.Weapons",
+        "GunSlugsClone.Enemies",
+        "GunSlugsClone.Player"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

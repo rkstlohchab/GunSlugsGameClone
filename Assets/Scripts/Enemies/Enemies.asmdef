@@ -1,0 +1,18 @@
+{
+    "name": "GunSlugsClone.Enemies",
+    "rootNamespace": "GunSlugsClone.Enemies",
+    "references": [
+        "GunSlugsClone.Core",
+        "GunSlugsClone.Weapons",
+        "GunSlugsClone.Player"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

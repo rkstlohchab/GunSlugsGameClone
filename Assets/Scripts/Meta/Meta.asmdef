@@ -1,0 +1,17 @@
+{
+    "name": "GunSlugsClone.Meta",
+    "rootNamespace": "GunSlugsClone.Meta",
+    "references": [
+        "GunSlugsClone.Core",
+        "GunSlugsClone.Services"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

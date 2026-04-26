@@ -1,0 +1,23 @@
+{
+    "name": "GunSlugsClone.UI",
+    "rootNamespace": "GunSlugsClone.UI",
+    "references": [
+        "GunSlugsClone.Core",
+        "GunSlugsClone.Player",
+        "GunSlugsClone.Weapons",
+        "GunSlugsClone.Services",
+        "GunSlugsClone.Meta",
+        "GunSlugsClone.Input",
+        "Unity.TextMeshPro",
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
