@@ -101,9 +101,10 @@ namespace GunSlugsClone.EditorTools
 
             var camera = CreateCamera();
 
-            // Build the level FIRST so we know the world-space bounds, then
-            // size+position the background to cover them.
-            var rooms = BuildLevelFromBiome();
+            // Build the stage FIRST so we know the world-space bounds, then
+            // size+position the background to cover them. GunSlugs-style
+            // single horizontal stage rather than the dungeon-rooms model.
+            var rooms = BuildStage();
             CreateBackgroundForLevel(rooms);
             var startRoom = rooms.Count > 0 ? rooms[0] : null;
 
@@ -280,11 +281,118 @@ namespace GunSlugsClone.EditorTools
             }
         }
 
-        // Manual deterministic horizontal layout: variant sequence picked from
-        // a seeded RNG, rooms positioned with their walls touching so floors
-        // and door gaps align cleanly. LevelGenerator's freeform graph layout
-        // produces non-linear shapes that don't read as a side-scrolling
-        // platformer; revisit it for a 2D-grid-based dungeon biome later.
+        // GunSlugs-style stage: ONE long horizontal floor, solid walls only at
+        // the far-left start barrier and the far-right boss gate, no ceiling
+        // (open sky), houses scattered along as cosmetic structures, with
+        // enemy + hostage spawn anchors distributed across the floor. Returns
+        // the stage as a single-element list because the rest of the smoke
+        // test was built around a 'list of rooms' contract — keeping that for
+        // now so WaveSpawner anchor collection and HUD wiring don't change.
+        private static List<GameObject> BuildStage()
+        {
+            const float stageWidth = 220f;
+            const float floorY     = -7f;     // floor centre Y
+            const float floorTop   = -6.5f;   // floor top edge (y = floorY + 0.5)
+            const float wallHeight = 14f;
+            var rooms = new List<GameObject>();
+
+            var stage = new GameObject("Stage");
+            var rt = stage.AddComponent<RoomTemplate>();
+            SetPrivateField(rt, "templateId", "stage_starter");
+            SetPrivateField(rt, "biomeTag", "biome_starter");
+            SetPrivateField(rt, "size", new Vector2(stageWidth, wallHeight));
+
+            var floorSprite = LoadKenneySprite("tile_floor.png");
+
+            // Continuous floor across the whole stage.
+            BuildSlab(stage.transform, "Floor",
+                new Vector3(stageWidth * 0.5f, floorY, 0f),
+                new Vector2(stageWidth, 1f),
+                new Color(0.42f, 0.70f, 0.34f),
+                floorSprite);
+
+            // Stage barriers: solid walls only at the very start and very end.
+            BuildSlab(stage.transform, "WallLeft",
+                new Vector3(0f, floorY + wallHeight * 0.5f + 0.5f, 0f),
+                new Vector2(1f, wallHeight),
+                new Color(0.25f, 0.28f, 0.32f),
+                floorSprite);
+            BuildSlab(stage.transform, "WallRight",
+                new Vector3(stageWidth, floorY + wallHeight * 0.5f + 0.5f, 0f),
+                new Vector2(1f, wallHeight),
+                new Color(0.25f, 0.28f, 0.32f),
+                floorSprite);
+
+            // Decorative houses along the stage. Cosmetic only for the smoke
+            // test; M2/M3 makes them enterable interiors. Each house is a small
+            // box (no collider) sitting on the floor with a darker tint so it
+            // reads as a building behind the action.
+            BuildHouse(stage.transform, new Vector2(35f,  floorTop), new Vector2(8f, 7f), new Color(0.55f, 0.32f, 0.20f));
+            BuildHouse(stage.transform, new Vector2(95f,  floorTop), new Vector2(10f, 8f), new Color(0.42f, 0.40f, 0.45f));
+            BuildHouse(stage.transform, new Vector2(160f, floorTop), new Vector2(8f, 7f), new Color(0.55f, 0.32f, 0.20f));
+
+            // Player spawn near the left edge.
+            var playerSpawn = new GameObject("PlayerSpawn");
+            playerSpawn.transform.SetParent(stage.transform, worldPositionStays: false);
+            playerSpawn.transform.position = new Vector3(5f, floorY + 1f, 0f);
+            SetPrivateField(rt, "playerSpawn", playerSpawn.transform);
+
+            // 8 enemy spawn anchors along the stage at floor level.
+            var enemySpawns = new List<Transform>();
+            for (var i = 0; i < 8; i++)
+            {
+                var anchor = new GameObject($"EnemySpawn_{i}");
+                anchor.transform.SetParent(stage.transform, worldPositionStays: false);
+                anchor.transform.position = new Vector3(20f + i * 24f, floorY + 1f, 0f);
+                enemySpawns.Add(anchor.transform);
+            }
+            SetPrivateField(rt, "enemySpawns", enemySpawns);
+
+            // Hostage anchors placed in front of the houses (one per house).
+            var hostageSpawns = new List<Transform>();
+            float[] housePositions = { 35f, 95f, 160f };
+            for (var i = 0; i < housePositions.Length; i++)
+            {
+                var anchor = new GameObject($"HostageSpawn_{i}");
+                anchor.transform.SetParent(stage.transform, worldPositionStays: false);
+                anchor.transform.position = new Vector3(housePositions[i], floorY + 1f, 0f);
+                hostageSpawns.Add(anchor.transform);
+            }
+            SetPrivateField(rt, "hostageSpawns", hostageSpawns);
+
+            rooms.Add(stage);
+            return rooms;
+        }
+
+        private static void BuildHouse(Transform parent, Vector2 anchorBottom, Vector2 size, Color tint)
+        {
+            var go = new GameObject("House");
+            go.transform.SetParent(parent, worldPositionStays: false);
+            // Anchor by bottom-centre so the house sits on the floor regardless
+            // of size.
+            go.transform.position = new Vector3(anchorBottom.x, anchorBottom.y + size.y * 0.5f, 0f);
+            go.transform.localScale = new Vector3(size.x, size.y, 1f);
+
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sortingOrder = -10; // behind characters/enemies but in front of the bg
+            var ps = go.AddComponent<ProceduralSquare>();
+            SetSerializedColor(ps, tint);
+
+            // 'Doorway' marker: a darker rectangle in the lower middle of the
+            // house. Purely cosmetic for now — selling the 'house' read.
+            var door = new GameObject("Doorway");
+            door.transform.SetParent(go.transform, worldPositionStays: false);
+            door.transform.localPosition = new Vector3(0f, -0.25f, 0f);
+            door.transform.localScale = new Vector3(0.25f, 0.5f, 1f);
+            var doorSr = door.AddComponent<SpriteRenderer>();
+            doorSr.sortingOrder = -9;
+            var doorPs = door.AddComponent<ProceduralSquare>();
+            SetSerializedColor(doorPs, new Color(0.10f, 0.08f, 0.06f));
+        }
+
+        // Kept around for future dungeon biomes — full graph-based layout
+        // doesn't fit the GunSlugs side-scroller stage but is the right shape
+        // for a top-down maze biome. Currently unused.
         private static List<GameObject> BuildLevelFromBiome()
         {
             var rooms = new List<GameObject>();
