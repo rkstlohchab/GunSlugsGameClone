@@ -26,6 +26,6 @@ MonoBehaviour:
   AmmoDropChance: 0.15
   CurrencyDropChance: 0.5
   CurrencyDropAmount: 1
-  Prefab: {fileID: 6792994454764011311, guid: f25e8614decf2475787eecc9d0dd707e, type: 3}
+  Prefab: {fileID: 9107428916163494104, guid: f25e8614decf2475787eecc9d0dd707e, type: 3}
   HitSfx: {fileID: 0}
   DeathSfx: {fileID: 0}

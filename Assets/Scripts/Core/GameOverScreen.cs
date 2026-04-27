@@ -21,8 +21,13 @@ namespace GunSlugsClone.Core
         private int _hostagesRescued;
         [SerializeField] private int hostagesTotal;
         private WaveSpawner _waveSpawner;
+        private string _currentWeaponName = "";
+        private int _playerCurrentHp;
+        private int _playerMaxHp = 5;
+        private Texture2D _solidWhite;
 
         public void SetHostagesTotal(int total) => hostagesTotal = total;
+        public void SetPlayerHealth(int current, int max) { _playerCurrentHp = current; _playerMaxHp = max; }
 
         private GUIStyle _titleStyle;
         private GUIStyle _hudLeft;
@@ -35,6 +40,8 @@ namespace GunSlugsClone.Core
             EventBus.Subscribe<EnemyKilledEvent>(OnKilled);
             EventBus.Subscribe<AllWavesClearedEvent>(OnVictory);
             EventBus.Subscribe<HostageRescuedEvent>(OnHostageRescued);
+            EventBus.Subscribe<WeaponSwappedEvent>(OnWeaponSwapped);
+            EventBus.Subscribe<PlayerDamagedEvent>(OnPlayerDamaged);
         }
 
         private void OnDisable()
@@ -43,7 +50,12 @@ namespace GunSlugsClone.Core
             EventBus.Unsubscribe<EnemyKilledEvent>(OnKilled);
             EventBus.Unsubscribe<AllWavesClearedEvent>(OnVictory);
             EventBus.Unsubscribe<HostageRescuedEvent>(OnHostageRescued);
+            EventBus.Unsubscribe<WeaponSwappedEvent>(OnWeaponSwapped);
+            EventBus.Unsubscribe<PlayerDamagedEvent>(OnPlayerDamaged);
         }
+
+        private void OnWeaponSwapped(WeaponSwappedEvent e) => _currentWeaponName = e.DisplayName;
+        private void OnPlayerDamaged(PlayerDamagedEvent e) { _playerCurrentHp = e.RemainingHealth; }
 
         private void Start()
         {
@@ -98,12 +110,21 @@ namespace GunSlugsClone.Core
             var w = Screen.width;
             var h = Screen.height;
 
-            // Always-visible HUD: score, wave, hostages stack top-left.
+            // Top-left readouts.
             GUI.Label(new Rect(20, 20, 320, 40), $"Score: {_score}", _hudLeft);
             if (_waveSpawner != null)
                 GUI.Label(new Rect(20, 56, 320, 30), $"Wave: {_waveSpawner.CurrentWave} / {_waveSpawner.TotalWaves}", _hudLeft);
             if (hostagesTotal > 0)
                 GUI.Label(new Rect(20, 84, 320, 30), $"Hostages: {_hostagesRescued} / {hostagesTotal}", _hudLeft);
+
+            // Top-centre HEALTH BAR.
+            DrawHealthBar(w);
+
+            // Bottom-centre CURRENT WEAPON.
+            if (!string.IsNullOrEmpty(_currentWeaponName))
+            {
+                GUI.Label(new Rect(0, h - 60, w, 40), $"WEAPON: {_currentWeaponName}", _hudCenter);
+            }
 
             if (_overlay == OverlayState.None) return;
 
@@ -156,6 +177,42 @@ namespace GunSlugsClone.Core
                 Application.Quit();
 #endif
             }
+        }
+
+        private void DrawHealthBar(int w)
+        {
+            const float barW = 380f;
+            const float barH = 22f;
+            var x = (w - barW) * 0.5f;
+            var y = 24f;
+
+            EnsureSolid();
+
+            // Background dim track.
+            var prev = GUI.color;
+            GUI.color = new Color(0f, 0f, 0f, 0.45f);
+            GUI.DrawTexture(new Rect(x - 2, y - 2, barW + 4, barH + 4), _solidWhite);
+
+            GUI.color = new Color(0.18f, 0.18f, 0.20f, 0.9f);
+            GUI.DrawTexture(new Rect(x, y, barW, barH), _solidWhite);
+
+            // Fill — green at full, red at empty.
+            var ratio = _playerMaxHp > 0 ? Mathf.Clamp01((float)_playerCurrentHp / _playerMaxHp) : 0f;
+            GUI.color = Color.Lerp(new Color(0.95f, 0.25f, 0.25f), new Color(0.30f, 0.85f, 0.35f), ratio);
+            GUI.DrawTexture(new Rect(x, y, barW * ratio, barH), _solidWhite);
+
+            GUI.color = prev;
+
+            // Numeric overlay.
+            GUI.Label(new Rect(x, y - 2, barW, barH + 4), $"{_playerCurrentHp} / {_playerMaxHp}", _hudCenter);
+        }
+
+        private void EnsureSolid()
+        {
+            if (_solidWhite != null) return;
+            _solidWhite = new Texture2D(1, 1);
+            _solidWhite.SetPixel(0, 0, Color.white);
+            _solidWhite.Apply();
         }
 
         private static void Reload()

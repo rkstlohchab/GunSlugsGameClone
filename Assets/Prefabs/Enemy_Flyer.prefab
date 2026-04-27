@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1 &6792994454764011311
+--- !u!1 &9107428916163494104
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -8,11 +8,11 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 3217201155342078343}
-  - component: {fileID: 3535580503434147830}
-  - component: {fileID: 5728917226024250243}
-  - component: {fileID: 1896442746176492186}
-  - component: {fileID: 8678033281175890807}
+  - component: {fileID: 1747866639943411736}
+  - component: {fileID: 1305253361764478623}
+  - component: {fileID: 5536055258593374343}
+  - component: {fileID: 5947761691032142502}
+  - component: {fileID: 4520003736177911851}
   m_Layer: 0
   m_Name: Enemy_Flyer
   m_TagString: Untagged
@@ -20,13 +20,13 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &3217201155342078343
+--- !u!4 &1747866639943411736
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6792994454764011311}
+  m_GameObject: {fileID: 9107428916163494104}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -35,14 +35,14 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!212 &3535580503434147830
+--- !u!212 &1305253361764478623
 SpriteRenderer:
   serializedVersion: 2
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6792994454764011311}
+  m_GameObject: {fileID: 9107428916163494104}
   m_Enabled: 1
   m_CastShadows: 0
   m_ReceiveShadows: 0
@@ -94,14 +94,14 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
---- !u!50 &5728917226024250243
+--- !u!50 &5536055258593374343
 Rigidbody2D:
   serializedVersion: 5
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6792994454764011311}
+  m_GameObject: {fileID: 9107428916163494104}
   m_BodyType: 0
   m_Simulated: 1
   m_UseFullKinematicContacts: 0
@@ -121,13 +121,13 @@ Rigidbody2D:
   m_SleepingMode: 1
   m_CollisionDetection: 1
   m_Constraints: 4
---- !u!61 &1896442746176492186
+--- !u!61 &5947761691032142502
 BoxCollider2D:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6792994454764011311}
+  m_GameObject: {fileID: 9107428916163494104}
   m_Enabled: 1
   serializedVersion: 3
   m_Density: 1
@@ -167,20 +167,20 @@ BoxCollider2D:
   m_AutoTiling: 0
   m_Size: {x: 0.9, y: 0.9}
   m_EdgeRadius: 0
---- !u!114 &8678033281175890807
+--- !u!114 &4520003736177911851
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6792994454764011311}
+  m_GameObject: {fileID: 9107428916163494104}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1cc88b15be9bd4c36af608669f18af19, type: 3}
   m_Name: 
   m_EditorClassIdentifier: GunSlugsClone.Enemies::GunSlugsClone.Enemies.AI.FlyerAI
   data: {fileID: 11400000, guid: 2d01663387c014011b3714bc9936dba2, type: 2}
-  flashRenderer: {fileID: 3535580503434147830}
+  flashRenderer: {fileID: 1305253361764478623}
   flashColor: {r: 1, g: 0.35, b: 0.35, a: 1}
   bobAmplitude: 0.6
   bobFrequency: 1.5

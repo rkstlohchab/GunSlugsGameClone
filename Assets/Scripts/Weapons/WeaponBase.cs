@@ -64,16 +64,41 @@ namespace GunSlugsClone.Weapons
 
         protected virtual void Fire()
         {
-            for (var i = 0; i < Data.ProjectilesPerShot; i++)
+            if (Data.Mode == FireMode.Melee)
             {
-                var spread = Random.Range(-Data.SpreadDegrees * 0.5f, Data.SpreadDegrees * 0.5f);
-                var dir = (Quaternion.Euler(0, 0, spread) * _aim).normalized;
-                SpawnProjectile(dir);
+                DoMeleeAttack();
+            }
+            else
+            {
+                for (var i = 0; i < Data.ProjectilesPerShot; i++)
+                {
+                    var spread = Random.Range(-Data.SpreadDegrees * 0.5f, Data.SpreadDegrees * 0.5f);
+                    var dir = (Quaternion.Euler(0, 0, spread) * _aim).normalized;
+                    SpawnProjectile(dir);
+                }
             }
             if (Data.MuzzleFlashPrefab != null)
                 Instantiate(Data.MuzzleFlashPrefab, _origin, Quaternion.LookRotation(Vector3.forward, _aim));
             if (Data.FireSfx != null)
                 AudioManager.Instance?.PlaySfx(Data.FireSfx, _origin);
+        }
+
+        // Melee weapons hit everything in a circle around the muzzle and apply
+        // damage + knockback. No projectile is spawned. Cooldown still gates
+        // swing rate so DPS is bounded.
+        private void DoMeleeAttack()
+        {
+            var damage = Mathf.RoundToInt(Data.Damage * _damageMul);
+            var hits = Physics2D.OverlapCircleAll(_origin, Data.MeleeRange);
+            for (var i = 0; i < hits.Length; i++)
+            {
+                var col = hits[i];
+                if (col == null) continue;
+                if (!col.TryGetComponent<IDamageable>(out var d)) continue;
+                if (col.transform.IsChildOf(transform.parent)) continue; // skip self / wielder
+                var knockback = _aim.normalized * Data.Knockback;
+                d.ApplyDamage(damage, knockback);
+            }
         }
 
         private void SpawnProjectile(Vector2 dir)

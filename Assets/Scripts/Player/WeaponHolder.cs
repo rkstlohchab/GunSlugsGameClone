@@ -105,7 +105,7 @@ namespace GunSlugsClone.Player
         {
             if (_weapons.Count <= 1) return;
             _activeIndex = (_activeIndex + 1) % _weapons.Count;
-            EventBus.Publish(new WeaponSwappedEvent(playerIndex, Active.Data.Id));
+            EventBus.Publish(new WeaponSwappedEvent(playerIndex, Active.Data.Id, Active.Data.DisplayName));
         }
 
         public bool Equip(WeaponData data)
@@ -121,7 +121,7 @@ namespace GunSlugsClone.Player
                 _weapons.Add(WeaponBase.Create(data, transform, _fireRateMul, _damageMul));
                 _activeIndex = _weapons.Count - 1;
             }
-            EventBus.Publish(new WeaponSwappedEvent(playerIndex, Active.Data.Id));
+            EventBus.Publish(new WeaponSwappedEvent(playerIndex, Active.Data.Id, Active.Data.DisplayName));
             return true;
         }
     }

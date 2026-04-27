@@ -10,25 +10,25 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 560a84815fd254a4fb93dc4f5ed43342, type: 3}
-  m_Name: weapon_pistol
+  m_Name: weapon_rocket
   m_EditorClassIdentifier: GunSlugsClone.Weapons::GunSlugsClone.Weapons.WeaponData
-  Id: weapon_pistol
-  DisplayName: Pistol
+  Id: weapon_rocket
+  DisplayName: Rocket Launcher
   Icon: {fileID: 0}
   Mode: 0
-  Damage: 10
-  FireRate: 4
+  Damage: 50
+  FireRate: 0.8
   ProjectilesPerShot: 1
-  SpreadDegrees: 1
-  ProjectileSpeed: 18
-  ProjectileLifetime: 1.5
-  Knockback: 1
-  Recoil: 0
+  SpreadDegrees: 0
+  ProjectileSpeed: 12
+  ProjectileLifetime: 2.5
+  Knockback: 5
+  Recoil: 0.3
   Infinite: 1
-  MagazineSize: 12
-  ReloadSeconds: 1
-  BurstCount: 1
-  BurstInterval: 0
+  MagazineSize: 4
+  ReloadSeconds: 2.5
+  BurstCount: 3
+  BurstInterval: 0.05
   MeleeRange: 1.6
   ProjectilePrefab: {fileID: 4569228383801152917, guid: b1bb4dbf8658940b2959f09c1eededb4, type: 3}
   MuzzleFlashPrefab: {fileID: 7276396818344378182, guid: cda8a21298f12430f9a7910fccdfaf17, type: 3}

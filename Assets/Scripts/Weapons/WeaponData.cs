@@ -32,6 +32,9 @@ namespace GunSlugsClone.Weapons
         [Min(1)] public int BurstCount = 3;
         [Min(0f)] public float BurstInterval = 0.05f;
 
+        [Header("Melee")]
+        [Min(0f)] public float MeleeRange = 1.6f;
+
         [Header("Visual / Audio")]
         public GameObject ProjectilePrefab;
         public GameObject MuzzleFlashPrefab;

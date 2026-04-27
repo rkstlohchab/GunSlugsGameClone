@@ -33,6 +33,9 @@ namespace GunSlugsClone.EditorTools
         private const string PistolAssetPath   = "Assets/ScriptableObjects/Weapons/weapon_pistol.asset";
         private const string SmgAssetPath      = "Assets/ScriptableObjects/Weapons/weapon_smg.asset";
         private const string ShotgunAssetPath  = "Assets/ScriptableObjects/Weapons/weapon_shotgun.asset";
+        private const string RocketAssetPath   = "Assets/ScriptableObjects/Weapons/weapon_rocket.asset";
+        private const string SniperAssetPath   = "Assets/ScriptableObjects/Weapons/weapon_sniper.asset";
+        private const string KnifeAssetPath    = "Assets/ScriptableObjects/Weapons/weapon_knife.asset";
         private const string EnemyDataPath   = "Assets/ScriptableObjects/Enemies/enemy_grunt.asset";
         private const string EnemyPrefabPath  = "Assets/Prefabs/Enemy_Grunt.prefab";
         private const string ChargerDataPath  = "Assets/ScriptableObjects/Enemies/enemy_charger.asset";
@@ -91,6 +94,9 @@ namespace GunSlugsClone.EditorTools
             EnsurePistolAsset();
             EnsureSmgAsset();
             EnsureShotgunAsset();
+            EnsureRocketAsset();
+            EnsureSniperAsset();
+            EnsureKnifeAsset();
             EnsureEnemyAssets();
             EnsureChargerAssets();
             EnsureFlyerAssets();
@@ -929,6 +935,9 @@ namespace GunSlugsClone.EditorTools
             var pistol  = AssetDatabase.LoadAssetAtPath<WeaponData>(PistolAssetPath);
             var smg     = AssetDatabase.LoadAssetAtPath<WeaponData>(SmgAssetPath);
             var shotgun = AssetDatabase.LoadAssetAtPath<WeaponData>(ShotgunAssetPath);
+            var rocket  = AssetDatabase.LoadAssetAtPath<WeaponData>(RocketAssetPath);
+            var sniper  = AssetDatabase.LoadAssetAtPath<WeaponData>(SniperAssetPath);
+            var knife   = AssetDatabase.LoadAssetAtPath<WeaponData>(KnifeAssetPath);
 
             var go = new GameObject("Player");
             go.transform.position = new Vector3(0, 0, 0);
@@ -981,15 +990,19 @@ namespace GunSlugsClone.EditorTools
             SetPrivateField(ctrl, "groundCheck", groundCheck.transform);
             SetPrivateField(ctrl, "extraJumps", 1); // single jump + 1 double-jump
             SetPrivateField(weaponHolder, "muzzle", muzzle.transform);
-            // Player carries all three starting weapons; Q cycles between them
-            // (SwapWeapon action). maxCarried defaults to 3 so the slot is full.
+            // Player carries all six starting weapons; Q (SwapWeapon action)
+            // cycles between them. maxCarried bumped to 6 so the slot is full.
             var loadout = new List<WeaponData>();
             if (pistol  != null) loadout.Add(pistol);
             if (smg     != null) loadout.Add(smg);
             if (shotgun != null) loadout.Add(shotgun);
+            if (rocket  != null) loadout.Add(rocket);
+            if (sniper  != null) loadout.Add(sniper);
+            if (knife   != null) loadout.Add(knife);
             if (loadout.Count == 0)
                 Debug.LogError("[SmokeTestSetup] All weapons null when wiring Player — bullets will not fire.");
             SetPrivateField(weaponHolder, "startingLoadout", loadout);
+            SetPrivateField(weaponHolder, "maxCarried", 6);
             EditorUtility.SetDirty(ctrl);
             EditorUtility.SetDirty(weaponHolder);
 
@@ -1325,6 +1338,122 @@ namespace GunSlugsClone.EditorTools
             }
         }
 
+        private static void EnsureRocketAsset()
+        {
+            try
+            {
+                EnsureFolder("Assets/ScriptableObjects/Weapons");
+                if (AssetDatabase.LoadMainAssetAtPath(RocketAssetPath) != null)
+                    AssetDatabase.DeleteAsset(RocketAssetPath);
+                var instance = ScriptableObject.CreateInstance<WeaponData>();
+                AssetDatabase.CreateAsset(instance, RocketAssetPath);
+                AssetDatabase.SaveAssets();
+                AssetDatabase.Refresh();
+                var rl = AssetDatabase.LoadAssetAtPath<WeaponData>(RocketAssetPath);
+                if (rl == null) return;
+
+                SetPrivateField(rl, "Id", "weapon_rocket");
+                SetPrivateField(rl, "DisplayName", "Rocket Launcher");
+                SetPrivateField(rl, "Mode", FireMode.SemiAuto);
+                SetPrivateField(rl, "Damage", 50);
+                SetPrivateField(rl, "FireRate", 0.8f);
+                SetPrivateField(rl, "ProjectilesPerShot", 1);
+                SetPrivateField(rl, "SpreadDegrees", 0f);
+                SetPrivateField(rl, "ProjectileSpeed", 12f);
+                SetPrivateField(rl, "ProjectileLifetime", 2.5f);
+                SetPrivateField(rl, "Knockback", 5f);
+                SetPrivateField(rl, "Recoil", 0.3f);
+                SetPrivateField(rl, "Infinite", true);
+                SetPrivateField(rl, "MagazineSize", 4);
+                SetPrivateField(rl, "ReloadSeconds", 2.5f);
+
+                var bullet = AssetDatabase.LoadAssetAtPath<GameObject>(BulletPrefabPath);
+                if (bullet != null) SetPrivateField(rl, "ProjectilePrefab", bullet);
+                var flash = AssetDatabase.LoadAssetAtPath<GameObject>(MuzzleFlashPath);
+                if (flash != null) SetPrivateField(rl, "MuzzleFlashPrefab", flash);
+
+                EditorUtility.SetDirty(rl);
+                AssetDatabase.SaveAssets();
+            }
+            catch (System.Exception e) { Debug.LogError($"[SmokeTestSetup] EnsureRocketAsset threw: {e}"); }
+        }
+
+        private static void EnsureSniperAsset()
+        {
+            try
+            {
+                EnsureFolder("Assets/ScriptableObjects/Weapons");
+                if (AssetDatabase.LoadMainAssetAtPath(SniperAssetPath) != null)
+                    AssetDatabase.DeleteAsset(SniperAssetPath);
+                var instance = ScriptableObject.CreateInstance<WeaponData>();
+                AssetDatabase.CreateAsset(instance, SniperAssetPath);
+                AssetDatabase.SaveAssets();
+                AssetDatabase.Refresh();
+                var sn = AssetDatabase.LoadAssetAtPath<WeaponData>(SniperAssetPath);
+                if (sn == null) return;
+
+                SetPrivateField(sn, "Id", "weapon_sniper");
+                SetPrivateField(sn, "DisplayName", "Sniper Rifle");
+                SetPrivateField(sn, "Mode", FireMode.SemiAuto);
+                SetPrivateField(sn, "Damage", 80);
+                SetPrivateField(sn, "FireRate", 0.7f);
+                SetPrivateField(sn, "ProjectilesPerShot", 1);
+                SetPrivateField(sn, "SpreadDegrees", 0f);
+                SetPrivateField(sn, "ProjectileSpeed", 40f);
+                SetPrivateField(sn, "ProjectileLifetime", 2f);
+                SetPrivateField(sn, "Knockback", 3f);
+                SetPrivateField(sn, "Recoil", 0.4f);
+                SetPrivateField(sn, "Infinite", true);
+                SetPrivateField(sn, "MagazineSize", 5);
+                SetPrivateField(sn, "ReloadSeconds", 2.0f);
+
+                var bullet = AssetDatabase.LoadAssetAtPath<GameObject>(BulletPrefabPath);
+                if (bullet != null) SetPrivateField(sn, "ProjectilePrefab", bullet);
+                var flash = AssetDatabase.LoadAssetAtPath<GameObject>(MuzzleFlashPath);
+                if (flash != null) SetPrivateField(sn, "MuzzleFlashPrefab", flash);
+
+                EditorUtility.SetDirty(sn);
+                AssetDatabase.SaveAssets();
+            }
+            catch (System.Exception e) { Debug.LogError($"[SmokeTestSetup] EnsureSniperAsset threw: {e}"); }
+        }
+
+        private static void EnsureKnifeAsset()
+        {
+            try
+            {
+                EnsureFolder("Assets/ScriptableObjects/Weapons");
+                if (AssetDatabase.LoadMainAssetAtPath(KnifeAssetPath) != null)
+                    AssetDatabase.DeleteAsset(KnifeAssetPath);
+                var instance = ScriptableObject.CreateInstance<WeaponData>();
+                AssetDatabase.CreateAsset(instance, KnifeAssetPath);
+                AssetDatabase.SaveAssets();
+                AssetDatabase.Refresh();
+                var kn = AssetDatabase.LoadAssetAtPath<WeaponData>(KnifeAssetPath);
+                if (kn == null) return;
+
+                SetPrivateField(kn, "Id", "weapon_knife");
+                SetPrivateField(kn, "DisplayName", "Knife");
+                SetPrivateField(kn, "Mode", FireMode.Melee);
+                SetPrivateField(kn, "Damage", 25);
+                SetPrivateField(kn, "FireRate", 3f);
+                SetPrivateField(kn, "ProjectilesPerShot", 0);
+                SetPrivateField(kn, "SpreadDegrees", 0f);
+                SetPrivateField(kn, "ProjectileSpeed", 0f);
+                SetPrivateField(kn, "ProjectileLifetime", 0f);
+                SetPrivateField(kn, "Knockback", 4f);
+                SetPrivateField(kn, "Recoil", 0f);
+                SetPrivateField(kn, "Infinite", true);
+                SetPrivateField(kn, "MagazineSize", 1);
+                SetPrivateField(kn, "ReloadSeconds", 0f);
+                SetPrivateField(kn, "MeleeRange", 1.6f);
+
+                EditorUtility.SetDirty(kn);
+                AssetDatabase.SaveAssets();
+            }
+            catch (System.Exception e) { Debug.LogError($"[SmokeTestSetup] EnsureKnifeAsset threw: {e}"); }
+        }
+
         private static void EnsureFlyerAssets()
         {
             try
@@ -1502,11 +1631,12 @@ namespace GunSlugsClone.EditorTools
                 eb.SetTarget(player.transform);
         }
 
-        private static void CreateGameOverScreen(int hostagesTotal)
+        private static void CreateGameOverScreen(int hostagesTotal, int playerMaxHp = 5)
         {
             var go = new GameObject("GameOverScreen");
             var screen = go.AddComponent<GameOverScreen>();
             screen.SetHostagesTotal(hostagesTotal);
+            screen.SetPlayerHealth(playerMaxHp, playerMaxHp);
         }
 
         private static void EnsureDeathBurstPrefab()
