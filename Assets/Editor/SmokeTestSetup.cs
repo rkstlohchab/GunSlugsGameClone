@@ -1950,14 +1950,14 @@ namespace GunSlugsClone.EditorTools
             var width = (maxX - minX) + 80f; // 40 of margin each side
             var height = 40f;
 
-            var root = new GameObject("Parallax");
+            var root = new GameObject("Background");
             root.transform.position = Vector3.zero;
 
-            // Layer 0 — solid sky. Uses tile_bg if present, otherwise a tinted
-            // ProceduralSquare. Sits behind everything else.
-            var sky = new GameObject("Parallax_Sky");
+            // Sky — single tiled background that fills the level + generous
+            // sky-room above the floor. Sorting order keeps it behind everything.
+            var sky = new GameObject("Background_Sky");
             sky.transform.SetParent(root.transform, worldPositionStays: false);
-            sky.transform.position = new Vector3(centerX, 0f, 0f);
+            sky.transform.position = new Vector3(centerX, 6f, 0f);
             var skySr = sky.AddComponent<SpriteRenderer>();
             skySr.sortingOrder = -60;
             var bgTile = LoadKenneySprite("tile_bg.png");
@@ -1967,64 +1967,40 @@ namespace GunSlugsClone.EditorTools
                 skySr.drawMode = SpriteDrawMode.Tiled;
                 skySr.tileMode = SpriteTileMode.Continuous;
                 skySr.size = new Vector2(width, height);
-                skySr.color = new Color(0.55f, 0.75f, 0.95f, 1f); // sky tint
+                skySr.color = new Color(0.62f, 0.82f, 0.96f, 1f); // soft sky blue
             }
             else
             {
                 sky.transform.localScale = new Vector3(width, height, 1f);
                 var ps = sky.AddComponent<ProceduralSquare>();
-                SetSerializedColor(ps, new Color(0.55f, 0.75f, 0.95f));
+                SetSerializedColor(ps, new Color(0.62f, 0.82f, 0.96f));
             }
 
-            // Layer 1 — far hills (slow scroll, parallaxFactor 0.2).
-            CreateParallaxStrip(root.transform, "Parallax_FarHills", "tile_0001.png",
-                tileWidth: 6f, tileHeight: 4f, count: Mathf.CeilToInt(width / 6f) + 4,
-                yOffset: -2f, sortingOrder: -55, parallaxFactor: 0.2f, centerX: centerX,
-                tint: new Color(0.65f, 0.78f, 0.85f));
-
-            // Layer 2 — mid clouds/trees (parallaxFactor 0.5).
-            CreateParallaxStrip(root.transform, "Parallax_Mid", "tile_0003.png",
-                tileWidth: 5f, tileHeight: 3.5f, count: Mathf.CeilToInt(width / 5f) + 4,
-                yOffset: 4.5f, sortingOrder: -54, parallaxFactor: 0.5f, centerX: centerX,
-                tint: new Color(0.95f, 0.95f, 1f, 0.85f));
-
-            // Layer 3 — near foreground silhouettes (parallaxFactor 0.85).
-            CreateParallaxStrip(root.transform, "Parallax_Near", "tile_0005.png",
-                tileWidth: 4f, tileHeight: 3f, count: Mathf.CeilToInt(width / 4f) + 4,
-                yOffset: -3f, sortingOrder: -53, parallaxFactor: 0.85f, centerX: centerX,
-                tint: new Color(0.45f, 0.55f, 0.55f));
-        }
-
-        // Spawns one parallax layer GO with `count` evenly-spaced tile sprites
-        // as children, then attaches a ParallaxLayer component so the whole
-        // strip drifts at `parallaxFactor` of camera movement.
-        private static void CreateParallaxStrip(
-            Transform parent, string name, string spriteFile,
-            float tileWidth, float tileHeight, int count,
-            float yOffset, int sortingOrder, float parallaxFactor, float centerX, Color tint)
-        {
-            var sprite = LoadBgSprite(spriteFile);
-            if (sprite == null) return; // sprite not imported yet — bail silently
-
-            var strip = new GameObject(name);
-            strip.transform.SetParent(parent, worldPositionStays: false);
-            strip.transform.position = new Vector3(centerX, yOffset, 0f);
-            var startX = -(count * tileWidth) * 0.5f + tileWidth * 0.5f;
-
-            for (var i = 0; i < count; i++)
+            // Single high cloud band that drifts slowly when the camera moves.
+            // Placed well above the floor (y=12) so it can never overlap the
+            // playfield — that was the bug in the previous 3-layer version.
+            var cloudSprite = LoadBgSprite("tile_0002.png");
+            if (cloudSprite != null)
             {
-                var tile = new GameObject($"Tile_{i}");
-                tile.transform.SetParent(strip.transform, worldPositionStays: false);
-                tile.transform.localPosition = new Vector3(startX + i * tileWidth, 0f, 0f);
-                tile.transform.localScale = new Vector3(tileWidth, tileHeight, 1f);
-                var tsr = tile.AddComponent<SpriteRenderer>();
-                tsr.sprite = sprite;
-                tsr.sortingOrder = sortingOrder;
-                tsr.color = tint;
+                var clouds = new GameObject("Background_Clouds");
+                clouds.transform.SetParent(root.transform, worldPositionStays: false);
+                clouds.transform.position = new Vector3(centerX, 12f, 0f);
+                var tileWidth = 4f;
+                var count = Mathf.CeilToInt(width / tileWidth) + 4;
+                var startX = -(count * tileWidth) * 0.5f + tileWidth * 0.5f;
+                for (var i = 0; i < count; i += 3) // sparse — every 3rd slot
+                {
+                    var c = new GameObject($"Cloud_{i}");
+                    c.transform.SetParent(clouds.transform, worldPositionStays: false);
+                    c.transform.localPosition = new Vector3(startX + i * tileWidth, Random.Range(-0.5f, 0.5f), 0f);
+                    var csr = c.AddComponent<SpriteRenderer>();
+                    csr.sprite = cloudSprite;
+                    csr.sortingOrder = -55;
+                    csr.color = new Color(1f, 1f, 1f, 0.85f);
+                }
+                var layer = clouds.AddComponent<ParallaxLayer>();
+                SetPrivateField(layer, "parallaxFactor", 0.25f);
             }
-
-            var layer = strip.AddComponent<ParallaxLayer>();
-            SetPrivateField(layer, "parallaxFactor", parallaxFactor);
         }
 
         private static void CreateLootSpawner()
