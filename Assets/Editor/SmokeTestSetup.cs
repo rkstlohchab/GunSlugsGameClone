@@ -203,24 +203,41 @@ namespace GunSlugsClone.EditorTools
 
         private static WeaponData EnsurePistolAsset(GameObject bulletPrefab)
         {
+            Debug.Log($"[EnsurePistolAsset] start, bulletPrefab={(bulletPrefab != null ? bulletPrefab.name : "NULL")}, path={PistolAssetPath}");
             try
             {
                 EnsureFolder("Assets/ScriptableObjects");
                 EnsureFolder("Assets/ScriptableObjects/Weapons");
 
-                var pistol = AssetDatabase.LoadAssetAtPath<WeaponData>(PistolAssetPath);
-                if (pistol == null)
+                // Always delete + recreate. Avoids the case where a stale or
+                // fake-null asset reference confuses LoadAssetAtPath.
+                if (AssetDatabase.LoadMainAssetAtPath(PistolAssetPath) != null)
                 {
-                    pistol = ScriptableObject.CreateInstance<WeaponData>();
-                    if (pistol == null)
-                    {
-                        Debug.LogError("[SmokeTestSetup] ScriptableObject.CreateInstance<WeaponData>() returned null.");
-                        return null;
-                    }
-                    AssetDatabase.CreateAsset(pistol, PistolAssetPath);
+                    var deleted = AssetDatabase.DeleteAsset(PistolAssetPath);
+                    Debug.Log($"[EnsurePistolAsset] DeleteAsset existing: {deleted}");
                 }
 
-                // Reflection — same reliability story as the WeaponHolder wiring.
+                var pistol = ScriptableObject.CreateInstance<WeaponData>();
+                Debug.Log($"[EnsurePistolAsset] CreateInstance: ReferenceEquals(null)={ReferenceEquals(pistol, null)}, ==null={pistol == null}");
+                if (ReferenceEquals(pistol, null))
+                {
+                    Debug.LogError("[SmokeTestSetup] ScriptableObject.CreateInstance<WeaponData>() returned C# null.");
+                    return null;
+                }
+
+                AssetDatabase.CreateAsset(pistol, PistolAssetPath);
+                AssetDatabase.SaveAssets();
+                Debug.Log($"[EnsurePistolAsset] After CreateAsset+Save: ==null={pistol == null}");
+
+                // Reload to get a stable reference past Unity's fake-null window.
+                pistol = AssetDatabase.LoadAssetAtPath<WeaponData>(PistolAssetPath);
+                Debug.Log($"[EnsurePistolAsset] After reload: {(pistol != null ? "non-null" : "NULL")}");
+                if (pistol == null)
+                {
+                    Debug.LogError("[SmokeTestSetup] LoadAssetAtPath after CreateAsset+Save returned null.");
+                    return null;
+                }
+
                 SetPrivateField(pistol, "Id", "weapon_pistol");
                 SetPrivateField(pistol, "DisplayName", "Pistol");
                 SetPrivateField(pistol, "Mode", FireMode.SemiAuto);
@@ -241,6 +258,8 @@ namespace GunSlugsClone.EditorTools
 
                 EditorUtility.SetDirty(pistol);
                 AssetDatabase.SaveAssets();
+
+                Debug.Log($"[EnsurePistolAsset] return: ==null={pistol == null}");
                 return pistol;
             }
             catch (System.Exception e)
