@@ -15,6 +15,8 @@ namespace GunSlugsClone.Core
         [SerializeField] private Vector3 offset = new Vector3(0f, 1f, -10f);
         [SerializeField, Min(0f)] private float damping = 6f;
         [SerializeField] private bool snapOnFirstFrame = true;
+        [SerializeField] private float minY = -1f; // floor always visible
+        [SerializeField] private float maxY = 100f;
 
         [Header("Screen Shake")]
         [SerializeField] private bool shakeOnPlayerDamage = true;
@@ -56,6 +58,10 @@ namespace GunSlugsClone.Core
         {
             if (target == null) return;
             var desired = target.position + offset;
+            // Clamp Y so the floor stays in view even when the player jumps
+            // very high or falls — combined with the screen-shake offset
+            // that runs after this lerp.
+            desired.y = Mathf.Clamp(desired.y, minY, maxY);
 
             if (snapOnFirstFrame && !_hasSnapped)
             {

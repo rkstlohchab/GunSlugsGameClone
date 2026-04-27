@@ -16,6 +16,10 @@ namespace GunSlugsClone.Enemies
         protected Transform Target;
         protected float AttackCdTimer;
         public EnemyData Data => data;
+        public int CurrentHealth => Health;
+        public int MaxHealth => data != null ? data.MaxHealth : 0;
+        public float HealthRatio => MaxHealth > 0 ? (float)Health / MaxHealth : 0f;
+        public float TimeSinceDamage { get; private set; } = float.MaxValue;
 
         protected virtual void Awake()
         {
@@ -37,10 +41,16 @@ namespace GunSlugsClone.Enemies
 
         public void SetTarget(Transform t) => Target = t;
 
+        protected virtual void Update()
+        {
+            if (TimeSinceDamage < 100f) TimeSinceDamage += Time.deltaTime;
+        }
+
         public void ApplyDamage(int amount, Vector2 knockback)
         {
             if (Health <= 0 || amount <= 0) return;
             Health -= amount;
+            TimeSinceDamage = 0f;
             if (knockback.sqrMagnitude > 0f) Rb.AddForce(knockback, ForceMode2D.Impulse);
             if (data != null && data.HitSfx != null)
                 AudioManager.Instance?.PlaySfx(data.HitSfx, transform.position);

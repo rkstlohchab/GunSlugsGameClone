@@ -136,7 +136,7 @@ namespace GunSlugsClone.EditorTools
             CreateLootSpawner();
             CreateVfxSpawner();
             AttachCameraFollow(camera, player.transform);
-            CreateGameOverScreen(hostagesTotal);
+            CreateGameOverScreen(hostagesTotal, playerMaxHp: 100);
             CreateTouchControlsCanvas();
 
             EditorSceneManager.MarkSceneDirty(scene);
@@ -207,8 +207,9 @@ namespace GunSlugsClone.EditorTools
         // RoomTemplate variants into a BiomeConfig SO and let LevelGenerator
         // stitch them via the door sockets.
         // Charger variant — faster, lower HP, more aggressive aggro range.
-        // Same GroundGruntAI behaviour for now (just data-driven differences);
-        // a dedicated ChargerAI with leap/dash logic is later combat-content work.
+        // Uses dedicated ChargerAI: approach → telegraph (yellow flash) → dash
+        // burst → recovery cooldown so it reads as a deliberate threat instead
+        // of a faster grunt.
         private static void EnsureChargerAssets()
         {
             try
@@ -237,12 +238,12 @@ namespace GunSlugsClone.EditorTools
                 SetPrivateField(data, "Id", "enemy_charger");
                 SetPrivateField(data, "DisplayName", "Charger");
                 SetPrivateField(data, "Archetype", EnemyArchetype.Charger);
-                SetPrivateField(data, "MaxHealth", 12);
+                SetPrivateField(data, "MaxHealth", 20);
                 SetPrivateField(data, "MoveSpeed", 4.5f);
                 SetPrivateField(data, "AggroRange", 12f);
                 SetPrivateField(data, "AttackRange", 1.0f);
                 SetPrivateField(data, "AttackCooldown", 0.6f);
-                SetPrivateField(data, "ContactDamage", 1);
+                SetPrivateField(data, "ContactDamage", 10);
                 SetPrivateField(data, "ScoreOnKill", 20);
                 EditorUtility.SetDirty(data);
                 AssetDatabase.SaveAssets();
@@ -270,16 +271,11 @@ namespace GunSlugsClone.EditorTools
                 var col = go.AddComponent<BoxCollider2D>();
                 col.size = new Vector2(1f, 1f);
 
-                var ai = go.AddComponent<GroundGruntAI>();
+                var ai = go.AddComponent<ChargerAI>();
                 SetPrivateField(ai, "data", data);
                 SetPrivateField(ai, "flashRenderer", sr);
-                SetPrivateField(ai, "patrolDistance", 4f);
-                SetPrivateField(ai, "groundMask", (LayerMask)1);
 
-                var edgeCheck = new GameObject("EdgeCheck");
-                edgeCheck.transform.SetParent(go.transform, worldPositionStays: false);
-                edgeCheck.transform.localPosition = new Vector3(0.6f, -0.6f, 0);
-                SetPrivateField(ai, "edgeCheck", edgeCheck.transform);
+                AddEnemyHealthBarTo(go, ai);
 
                 var prefab = PrefabUtility.SaveAsPrefabAsset(go, ChargerPrefabPath);
                 Object.DestroyImmediate(go);
@@ -744,12 +740,12 @@ namespace GunSlugsClone.EditorTools
                 SetPrivateField(data, "Id", "enemy_boss");
                 SetPrivateField(data, "DisplayName", "Boss");
                 SetPrivateField(data, "Archetype", EnemyArchetype.Boss);
-                SetPrivateField(data, "MaxHealth", 100);
+                SetPrivateField(data, "MaxHealth", 250);
                 SetPrivateField(data, "MoveSpeed", 1.6f);
                 SetPrivateField(data, "AggroRange", 16f);
                 SetPrivateField(data, "AttackRange", 1.5f);
                 SetPrivateField(data, "AttackCooldown", 0.7f);
-                SetPrivateField(data, "ContactDamage", 2);
+                SetPrivateField(data, "ContactDamage", 20);
                 SetPrivateField(data, "ScoreOnKill", 200);
                 EditorUtility.SetDirty(data);
                 AssetDatabase.SaveAssets();
@@ -790,6 +786,8 @@ namespace GunSlugsClone.EditorTools
                 edgeCheck.transform.SetParent(go.transform, worldPositionStays: false);
                 edgeCheck.transform.localPosition = new Vector3(0.6f, -0.6f, 0);
                 SetPrivateField(ai, "edgeCheck", edgeCheck.transform);
+
+                AddEnemyHealthBarTo(go, ai);
 
                 var prefab = PrefabUtility.SaveAsPrefabAsset(go, BossPrefabPath);
                 Object.DestroyImmediate(go);
@@ -853,6 +851,43 @@ namespace GunSlugsClone.EditorTools
         // through one code path.
         private static void EnsureRoomTemplatePrefab()
             => AuthorRoomTemplate(RoomPrefabPath, "room_standard", new Vector2(30f, 14f), enemyAnchors: 3, hostageAnchors: 2);
+
+        // Builds an EnemyHealthBar GameObject as a child of `enemy`. Two child
+        // SpriteRenderers (background + fill) using ProceduralSquare for the
+        // visual; EnemyHealthBar component scales the fill each frame.
+        private static void AddEnemyHealthBarTo(GameObject enemy, EnemyBase enemyBase)
+        {
+            var bar = new GameObject("HealthBar");
+            bar.transform.SetParent(enemy.transform, worldPositionStays: false);
+            bar.transform.localPosition = Vector3.zero;
+
+            // Background (dim track).
+            var bg = new GameObject("BarBg");
+            bg.transform.SetParent(bar.transform, worldPositionStays: false);
+            bg.transform.localScale = new Vector3(1.1f, 0.10f, 1f);
+            var bgSr = bg.AddComponent<SpriteRenderer>();
+            bgSr.sortingOrder = 9;
+            var bgPs = bg.AddComponent<ProceduralSquare>();
+            SetSerializedColor(bgPs, new Color(0f, 0f, 0f, 0.6f));
+
+            // Fill (scaled by ratio).
+            var fill = new GameObject("BarFill");
+            fill.transform.SetParent(bar.transform, worldPositionStays: false);
+            fill.transform.localScale = new Vector3(1.1f, 0.10f, 1f);
+            var fillSr = fill.AddComponent<SpriteRenderer>();
+            fillSr.sortingOrder = 10;
+            var fillPs = fill.AddComponent<ProceduralSquare>();
+            SetSerializedColor(fillPs, new Color(0.30f, 0.85f, 0.35f));
+
+            var hb = bar.AddComponent<EnemyHealthBar>();
+            SetPrivateField(hb, "target", enemyBase);
+            SetPrivateField(hb, "fillRenderer", fillSr);
+            SetPrivateField(hb, "backgroundRenderer", bgSr);
+            SetPrivateField(hb, "fullWidth", 1.1f);
+            SetPrivateField(hb, "thickness", 0.10f);
+            SetPrivateField(hb, "offset", new Vector3(0f, 0.85f, 0f));
+            SetPrivateField(hb, "showSecondsAfterHit", 2f);
+        }
 
         private static DoorSocket AddDoorSocket(Transform parent, string name, Vector3 localPos, DoorDirection direction)
         {
@@ -1476,12 +1511,12 @@ namespace GunSlugsClone.EditorTools
                 SetPrivateField(data, "Id", "enemy_flyer");
                 SetPrivateField(data, "DisplayName", "Flyer");
                 SetPrivateField(data, "Archetype", EnemyArchetype.Flyer);
-                SetPrivateField(data, "MaxHealth", 8);
+                SetPrivateField(data, "MaxHealth", 15);
                 SetPrivateField(data, "MoveSpeed", 3.5f);
                 SetPrivateField(data, "AggroRange", 14f);
                 SetPrivateField(data, "AttackRange", 1.0f);
                 SetPrivateField(data, "AttackCooldown", 0.8f);
-                SetPrivateField(data, "ContactDamage", 1);
+                SetPrivateField(data, "ContactDamage", 10);
                 SetPrivateField(data, "ScoreOnKill", 25);
                 EditorUtility.SetDirty(data);
                 AssetDatabase.SaveAssets();
@@ -1514,6 +1549,8 @@ namespace GunSlugsClone.EditorTools
                 var ai = go.AddComponent<FlyerAI>();
                 SetPrivateField(ai, "data", data);
                 SetPrivateField(ai, "flashRenderer", sr);
+
+                AddEnemyHealthBarTo(go, ai);
 
                 var prefab = PrefabUtility.SaveAsPrefabAsset(go, FlyerPrefabPath);
                 Object.DestroyImmediate(go);
@@ -1557,12 +1594,12 @@ namespace GunSlugsClone.EditorTools
                 SetPrivateField(enemyData, "Id", "enemy_grunt");
                 SetPrivateField(enemyData, "DisplayName", "Grunt");
                 SetPrivateField(enemyData, "Archetype", EnemyArchetype.Grunt);
-                SetPrivateField(enemyData, "MaxHealth", 20);
+                SetPrivateField(enemyData, "MaxHealth", 30);
                 SetPrivateField(enemyData, "MoveSpeed", 2.5f);
                 SetPrivateField(enemyData, "AggroRange", 8f);
                 SetPrivateField(enemyData, "AttackRange", 1.2f);
                 SetPrivateField(enemyData, "AttackCooldown", 1.0f);
-                SetPrivateField(enemyData, "ContactDamage", 1);
+                SetPrivateField(enemyData, "ContactDamage", 10);
                 SetPrivateField(enemyData, "ScoreOnKill", 10);
                 EditorUtility.SetDirty(enemyData);
                 AssetDatabase.SaveAssets();
@@ -1602,6 +1639,8 @@ namespace GunSlugsClone.EditorTools
                 edgeCheck.transform.localPosition = new Vector3(0.6f, -0.6f, 0);
                 SetPrivateField(ai, "edgeCheck", edgeCheck.transform);
 
+                AddEnemyHealthBarTo(go, ai);
+
                 var prefab = PrefabUtility.SaveAsPrefabAsset(go, EnemyPrefabPath);
                 Object.DestroyImmediate(go);
 
@@ -1631,7 +1670,7 @@ namespace GunSlugsClone.EditorTools
                 eb.SetTarget(player.transform);
         }
 
-        private static void CreateGameOverScreen(int hostagesTotal, int playerMaxHp = 5)
+        private static void CreateGameOverScreen(int hostagesTotal, int playerMaxHp = 100)
         {
             var go = new GameObject("GameOverScreen");
             var screen = go.AddComponent<GameOverScreen>();

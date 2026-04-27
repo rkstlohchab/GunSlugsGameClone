@@ -30,8 +30,23 @@ namespace GunSlugsClone.Enemies.AI
             var velocity = Rb.linearVelocity;
             if (_aggro)
             {
-                var dir = Mathf.Sign(Target.position.x - transform.position.x);
-                velocity.x = dir * data.MoveSpeed * 1.2f;
+                // Brief stop when within attack range so the grunt feels deliberate
+                // (and isn't constantly grinding into the player). Outside attack
+                // range, walk toward the player at a slight speed-up.
+                if (distToTarget <= data.AttackRange)
+                {
+                    velocity.x = 0f;
+                    var face = Mathf.Sign(Target.position.x - transform.position.x);
+                    if (face != 0f)
+                    {
+                        var s = transform.localScale; s.x = Mathf.Abs(s.x) * face; transform.localScale = s;
+                    }
+                }
+                else
+                {
+                    var dir = Mathf.Sign(Target.position.x - transform.position.x);
+                    velocity.x = dir * data.MoveSpeed * 1.2f;
+                }
             }
             else
             {

@@ -6,7 +6,7 @@ namespace GunSlugsClone.Player
     public sealed class PlayerHealth : MonoBehaviour
     {
         [SerializeField] private int playerIndex = 0;
-        [SerializeField] private int maxHealth = 5;
+        [SerializeField] private int maxHealth = 100;
         [SerializeField] private float invulnerabilityOnHit = 0.8f;
         [SerializeField] private SpriteRenderer flashRenderer;
         [SerializeField] private Color flashColor = Color.white;

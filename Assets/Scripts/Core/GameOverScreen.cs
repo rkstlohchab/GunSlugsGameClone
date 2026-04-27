@@ -23,8 +23,12 @@ namespace GunSlugsClone.Core
         private WaveSpawner _waveSpawner;
         private string _currentWeaponName = "";
         private int _playerCurrentHp;
-        private int _playerMaxHp = 5;
+        private int _playerMaxHp = 100;
         private Texture2D _solidWhite;
+        private int _ammoCurrent;
+        private int _ammoMax;
+        private bool _ammoInfinite = true;
+        private bool _ammoReloading;
 
         public void SetHostagesTotal(int total) => hostagesTotal = total;
         public void SetPlayerHealth(int current, int max) { _playerCurrentHp = current; _playerMaxHp = max; }
@@ -42,6 +46,7 @@ namespace GunSlugsClone.Core
             EventBus.Subscribe<HostageRescuedEvent>(OnHostageRescued);
             EventBus.Subscribe<WeaponSwappedEvent>(OnWeaponSwapped);
             EventBus.Subscribe<PlayerDamagedEvent>(OnPlayerDamaged);
+            EventBus.Subscribe<WeaponAmmoChangedEvent>(OnAmmoChanged);
         }
 
         private void OnDisable()
@@ -52,10 +57,18 @@ namespace GunSlugsClone.Core
             EventBus.Unsubscribe<HostageRescuedEvent>(OnHostageRescued);
             EventBus.Unsubscribe<WeaponSwappedEvent>(OnWeaponSwapped);
             EventBus.Unsubscribe<PlayerDamagedEvent>(OnPlayerDamaged);
+            EventBus.Unsubscribe<WeaponAmmoChangedEvent>(OnAmmoChanged);
         }
 
         private void OnWeaponSwapped(WeaponSwappedEvent e) => _currentWeaponName = e.DisplayName;
         private void OnPlayerDamaged(PlayerDamagedEvent e) { _playerCurrentHp = e.RemainingHealth; }
+        private void OnAmmoChanged(WeaponAmmoChangedEvent e)
+        {
+            _ammoCurrent = e.Current;
+            _ammoMax = e.Magazine;
+            _ammoInfinite = e.Infinite;
+            _ammoReloading = e.Reloading;
+        }
 
         private void Start()
         {
@@ -120,10 +133,14 @@ namespace GunSlugsClone.Core
             // Top-centre HEALTH BAR.
             DrawHealthBar(w);
 
-            // Bottom-centre CURRENT WEAPON.
+            // Bottom-centre CURRENT WEAPON + ammo.
             if (!string.IsNullOrEmpty(_currentWeaponName))
             {
-                GUI.Label(new Rect(0, h - 60, w, 40), $"WEAPON: {_currentWeaponName}", _hudCenter);
+                var ammoText = _ammoInfinite
+                    ? "∞"
+                    : _ammoReloading ? "RELOADING" : $"{_ammoCurrent} / {_ammoMax}";
+                GUI.Label(new Rect(0, h - 80, w, 30), $"WEAPON: {_currentWeaponName}", _hudCenter);
+                GUI.Label(new Rect(0, h - 50, w, 30), $"AMMO: {ammoText}", _hudCenter);
             }
 
             if (_overlay == OverlayState.None) return;

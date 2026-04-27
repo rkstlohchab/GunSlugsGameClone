@@ -15,6 +15,14 @@ namespace GunSlugsClone.UI
         {
             _group = GetComponent<CanvasGroup>();
             if (_group == null) _group = gameObject.AddComponent<CanvasGroup>();
+            // Disable the whole Canvas off-mobile so its Scene-view rectangle
+            // also disappears (CanvasGroup alpha alone keeps the canvas
+            // visualised in Scene view).
+            if (!Application.isMobilePlatform)
+            {
+                var c = GetComponent<Canvas>();
+                if (c != null) c.enabled = false;
+            }
         }
 
         private void OnEnable() => InputSystem.onDeviceChange += OnDeviceChange;

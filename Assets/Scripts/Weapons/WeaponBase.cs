@@ -59,7 +59,13 @@ namespace GunSlugsClone.Weapons
             Fire();
             _cooldown = Data.SecondsBetweenShots / Mathf.Max(0.01f, _fireRateMul);
             if (!Data.Infinite) Ammo--;
+            PublishAmmoChanged();
             return true;
+        }
+
+        private void PublishAmmoChanged()
+        {
+            EventBus.Publish(new WeaponAmmoChangedEvent(Ammo, Data.MagazineSize, Data.Infinite, _reloading));
         }
 
         protected virtual void Fire()
@@ -114,12 +120,21 @@ namespace GunSlugsClone.Weapons
             _reloading = true;
             _reloadRemaining = Data.ReloadSeconds;
             if (Data.ReloadSfx != null) AudioManager.Instance?.PlaySfx(Data.ReloadSfx, _origin);
+            PublishAmmoChanged();
         }
 
         private void FinishReload()
         {
             _reloading = false;
             Ammo = Data.MagazineSize;
+            PublishAmmoChanged();
+        }
+
+        private void OnEnable()
+        {
+            // Surface initial ammo on every weapon-equip so the HUD updates
+            // when the player switches to a different gun.
+            if (Data != null) PublishAmmoChanged();
         }
     }
 }
