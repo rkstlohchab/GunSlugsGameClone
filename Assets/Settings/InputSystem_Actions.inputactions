@@ -85,6 +85,21 @@
                 { "name": "down",  "id": "33333333-3333-3333-3333-333333330003", "path": "<Keyboard>/s", "interactions": "", "processors": "", "groups": "Keyboard&Mouse", "action": "Move", "isComposite": false, "isPartOfComposite": true },
                 { "name": "left",  "id": "33333333-3333-3333-3333-333333330004", "path": "<Keyboard>/a", "interactions": "", "processors": "", "groups": "Keyboard&Mouse", "action": "Move", "isComposite": false, "isPartOfComposite": true },
                 { "name": "right", "id": "33333333-3333-3333-3333-333333330005", "path": "<Keyboard>/d", "interactions": "", "processors": "", "groups": "Keyboard&Mouse", "action": "Move", "isComposite": false, "isPartOfComposite": true },
+                {
+                    "name": "Arrows",
+                    "id": "33333333-3333-3333-3333-333333330006",
+                    "path": "2DVector",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Move",
+                    "isComposite": true,
+                    "isPartOfComposite": false
+                },
+                { "name": "up",    "id": "33333333-3333-3333-3333-333333330007", "path": "<Keyboard>/upArrow",    "interactions": "", "processors": "", "groups": "Keyboard&Mouse", "action": "Move", "isComposite": false, "isPartOfComposite": true },
+                { "name": "down",  "id": "33333333-3333-3333-3333-333333330008", "path": "<Keyboard>/downArrow",  "interactions": "", "processors": "", "groups": "Keyboard&Mouse", "action": "Move", "isComposite": false, "isPartOfComposite": true },
+                { "name": "left",  "id": "33333333-3333-3333-3333-333333330009", "path": "<Keyboard>/leftArrow",  "interactions": "", "processors": "", "groups": "Keyboard&Mouse", "action": "Move", "isComposite": false, "isPartOfComposite": true },
+                { "name": "right", "id": "33333333-3333-3333-3333-33333333000a", "path": "<Keyboard>/rightArrow", "interactions": "", "processors": "", "groups": "Keyboard&Mouse", "action": "Move", "isComposite": false, "isPartOfComposite": true },
 
                 { "name": "",      "id": "33333333-3333-3333-3333-333333330010", "path": "<Gamepad>/leftStick",  "interactions": "", "processors": "", "groups": "Gamepad", "action": "Move", "isComposite": false, "isPartOfComposite": false },
                 { "name": "",      "id": "33333333-3333-3333-3333-333333330011", "path": "<Gamepad>/dpad",       "interactions": "", "processors": "", "groups": "Gamepad", "action": "Move", "isComposite": false, "isPartOfComposite": false },

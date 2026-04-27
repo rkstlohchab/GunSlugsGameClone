@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 11ad2027c9630469c8213c1f95ac8cec, type: 3}
+  m_Name: biome_starter
+  m_EditorClassIdentifier: GunSlugsClone.Procedural::GunSlugsClone.Procedural.BiomeConfig
+  Id: biome_starter
+  DisplayName: Starter Biome
+  RoomsPerRun: 5
+  TreasureRoomChance: 0.2
+  RoomTemplates:
+  - {fileID: 5153445635878571345, guid: ab6dacaee6fee47e3810cdd464aa1664, type: 3}
+  - {fileID: 2289470396414989112, guid: ea00afd8a1fe9441e9015c44d8043d4a, type: 3}
+  - {fileID: 2092097128491118579, guid: 1c39559fa1e9f46aba1b8fadcc3b4530, type: 3}
+  EnemyPool:
+  - {fileID: 11400000, guid: eafcb3024d91945418a85cd056ee7506, type: 2}
+  - {fileID: 11400000, guid: a926c9997f44e47869fc81ddcdeb6d98, type: 2}
+  EnemyWeights: []
+  BossPrefab: {fileID: 5725431020653025399, guid: 38666e3f3e5e94d6d951f326104d058f, type: 3}
+  AmbientTint: {r: 1, g: 1, b: 1, a: 1}
+  Music: {fileID: 0}

@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1 &881307213697790525
+--- !u!1 &3596192970287197573
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -8,12 +8,12 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 6757859589245800248}
-  - component: {fileID: 3951919375899436679}
-  - component: {fileID: 7909251133491282895}
-  - component: {fileID: 5618733968795999200}
-  - component: {fileID: 1028344221036091234}
-  - component: {fileID: 7120899513375083840}
+  - component: {fileID: 1907673845724433665}
+  - component: {fileID: 1287744591692279513}
+  - component: {fileID: 8380612165674695825}
+  - component: {fileID: 6450489973892553467}
+  - component: {fileID: 1878457960394049448}
+  - component: {fileID: 198634591042281978}
   m_Layer: 0
   m_Name: HealthPickup
   m_TagString: Untagged
@@ -21,13 +21,13 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &6757859589245800248
+--- !u!4 &1907673845724433665
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 881307213697790525}
+  m_GameObject: {fileID: 3596192970287197573}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -36,14 +36,14 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!212 &3951919375899436679
+--- !u!212 &1287744591692279513
 SpriteRenderer:
   serializedVersion: 2
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 881307213697790525}
+  m_GameObject: {fileID: 3596192970287197573}
   m_Enabled: 1
   m_CastShadows: 0
   m_ReceiveShadows: 0
@@ -95,14 +95,14 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
---- !u!50 &7909251133491282895
+--- !u!50 &8380612165674695825
 Rigidbody2D:
   serializedVersion: 5
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 881307213697790525}
+  m_GameObject: {fileID: 3596192970287197573}
   m_BodyType: 0
   m_Simulated: 1
   m_UseFullKinematicContacts: 0
@@ -122,13 +122,13 @@ Rigidbody2D:
   m_SleepingMode: 1
   m_CollisionDetection: 1
   m_Constraints: 4
---- !u!58 &5618733968795999200
+--- !u!58 &6450489973892553467
 CircleCollider2D:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 881307213697790525}
+  m_GameObject: {fileID: 3596192970287197573}
   m_Enabled: 1
   serializedVersion: 3
   m_Density: 1
@@ -158,13 +158,13 @@ CircleCollider2D:
   m_CompositeOrder: 0
   m_Offset: {x: 0, y: 0}
   m_Radius: 0.35
---- !u!58 &1028344221036091234
+--- !u!58 &1878457960394049448
 CircleCollider2D:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 881307213697790525}
+  m_GameObject: {fileID: 3596192970287197573}
   m_Enabled: 1
   serializedVersion: 3
   m_Density: 1
@@ -194,13 +194,13 @@ CircleCollider2D:
   m_CompositeOrder: 0
   m_Offset: {x: 0, y: 0}
   m_Radius: 0.6
---- !u!114 &7120899513375083840
+--- !u!114 &198634591042281978
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 881307213697790525}
+  m_GameObject: {fileID: 3596192970287197573}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 143441cf01ea54f68b6e412b45bd90c8, type: 3}

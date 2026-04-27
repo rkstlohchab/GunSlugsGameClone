@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1 &4167305711317571938
+--- !u!1 &7993878468880646019
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -8,22 +8,22 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 2183255302117505251}
-  - component: {fileID: 5802061304630284863}
+  - component: {fileID: 5420940729998834029}
+  - component: {fileID: 8199001510251608051}
   m_Layer: 0
-  m_Name: Vfx_DeathBurst
+  m_Name: Vfx_RescueBurst
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &2183255302117505251
+--- !u!4 &5420940729998834029
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4167305711317571938}
+  m_GameObject: {fileID: 7993878468880646019}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -32,25 +32,25 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &5802061304630284863
+--- !u!114 &8199001510251608051
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4167305711317571938}
+  m_GameObject: {fileID: 7993878468880646019}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: de2a35796cbe54ee2b17d32869d97bd0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: GunSlugsClone.Core::GunSlugsClone.Core.SimpleParticleBurst
-  count: 18
-  speed: 5.5
-  speedJitter: 1.5
-  lifetime: 0.7
-  size: 0.18
-  color: {r: 1, g: 0.35, b: 0.35, a: 1}
-  gravityScale: 1.4
+  count: 20
+  speed: 6
+  speedJitter: 1
+  lifetime: 0.8
+  size: 0.22
+  color: {r: 0.35, g: 1, b: 0.55, a: 1}
+  gravityScale: 0.4
   coneAngleDegrees: 360
   baseDirection: {x: 0, y: 1}
-  sortingOrder: 10
+  sortingOrder: 12

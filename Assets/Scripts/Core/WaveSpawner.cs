@@ -16,11 +16,13 @@ namespace GunSlugsClone.Core
         {
             public int gruntCount;
             public int chargerCount;
+            public int flyerCount;
             public int bossCount;
         }
 
         [SerializeField] private GameObject gruntPrefab;
         [SerializeField] private GameObject chargerPrefab;
+        [SerializeField] private GameObject flyerPrefab;
         [SerializeField] private GameObject bossPrefab;
         [SerializeField] private List<Transform> spawnAnchors = new();
         [SerializeField] private List<WaveConfig> waves = new();
@@ -84,9 +86,10 @@ namespace GunSlugsClone.Core
 
             anchorIdx = SpawnBatch(gruntPrefab,   wave.gruntCount,   anchorIdx);
             anchorIdx = SpawnBatch(chargerPrefab, wave.chargerCount, anchorIdx);
+            anchorIdx = SpawnBatch(flyerPrefab,   wave.flyerCount,   anchorIdx);
             anchorIdx = SpawnBatch(bossPrefab,    wave.bossCount,    anchorIdx);
 
-            Debug.Log($"[WaveSpawner] Wave {CurrentWave}/{TotalWaves}: {wave.gruntCount} grunts + {wave.chargerCount} chargers + {wave.bossCount} bosses.");
+            Debug.Log($"[WaveSpawner] Wave {CurrentWave}/{TotalWaves}: {wave.gruntCount}G + {wave.chargerCount}C + {wave.flyerCount}F + {wave.bossCount}B.");
         }
 
         private int SpawnBatch(GameObject prefab, int count, int anchorIdx)

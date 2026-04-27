@@ -30,11 +30,15 @@ namespace GunSlugsClone.EditorTools
         private const string ScenePath        = "Assets/Scenes/SmokeTest.unity";
         private const string InputActionsPath = "Assets/Settings/InputSystem_Actions.inputactions";
         private const string BulletPrefabPath = "Assets/Prefabs/Bullet.prefab";
-        private const string PistolAssetPath  = "Assets/ScriptableObjects/Weapons/weapon_pistol.asset";
+        private const string PistolAssetPath   = "Assets/ScriptableObjects/Weapons/weapon_pistol.asset";
+        private const string SmgAssetPath      = "Assets/ScriptableObjects/Weapons/weapon_smg.asset";
+        private const string ShotgunAssetPath  = "Assets/ScriptableObjects/Weapons/weapon_shotgun.asset";
         private const string EnemyDataPath   = "Assets/ScriptableObjects/Enemies/enemy_grunt.asset";
         private const string EnemyPrefabPath  = "Assets/Prefabs/Enemy_Grunt.prefab";
         private const string ChargerDataPath  = "Assets/ScriptableObjects/Enemies/enemy_charger.asset";
         private const string ChargerPrefabPath = "Assets/Prefabs/Enemy_Charger.prefab";
+        private const string FlyerDataPath    = "Assets/ScriptableObjects/Enemies/enemy_flyer.asset";
+        private const string FlyerPrefabPath  = "Assets/Prefabs/Enemy_Flyer.prefab";
         private const string BossDataPath     = "Assets/ScriptableObjects/Enemies/enemy_boss.asset";
         private const string BossPrefabPath   = "Assets/Prefabs/Enemy_Boss.prefab";
         private const string RoomPrefabPath        = "Assets/Prefabs/RoomTemplate_Standard.prefab";
@@ -61,6 +65,7 @@ namespace GunSlugsClone.EditorTools
             ("Tiles/Characters/tile_0009.png", "character_charger.png", 24),
             ("Tiles/Characters/tile_0026.png", "character_boss.png",    24),
             ("Tiles/Characters/tile_0003.png", "character_hostage.png", 24),
+            ("Tiles/Characters/tile_0015.png", "character_flyer.png",   24),
             ("Tiles/tile_0006.png",            "tile_floor.png",        18),
             ("Tiles/tile_0044.png",            "tile_heart.png",        18),
             ("Tiles/tile_0151.png",            "tile_bullet.png",       18),
@@ -84,8 +89,11 @@ namespace GunSlugsClone.EditorTools
             EnsureBulletPrefab();
             EnsureMuzzleFlashPrefab();
             EnsurePistolAsset();
+            EnsureSmgAsset();
+            EnsureShotgunAsset();
             EnsureEnemyAssets();
             EnsureChargerAssets();
+            EnsureFlyerAssets();
             EnsureBossAssets();
             EnsureRoomTemplatePrefab();          // standard variant
             EnsureRoomHallwayPrefab();
@@ -458,9 +466,11 @@ namespace GunSlugsClone.EditorTools
 
             var grunt   = AssetDatabase.LoadAssetAtPath<GameObject>(EnemyPrefabPath);
             var charger = AssetDatabase.LoadAssetAtPath<GameObject>(ChargerPrefabPath);
+            var flyer   = AssetDatabase.LoadAssetAtPath<GameObject>(FlyerPrefabPath);
             var boss    = AssetDatabase.LoadAssetAtPath<GameObject>(BossPrefabPath);
             if (grunt != null)   SetPrivateField(spawner, "gruntPrefab",   grunt);
             if (charger != null) SetPrivateField(spawner, "chargerPrefab", charger);
+            if (flyer != null)   SetPrivateField(spawner, "flyerPrefab",   flyer);
             if (boss != null)    SetPrivateField(spawner, "bossPrefab",    boss);
 
             SetPrivateField(spawner, "playerTransform", playerTransform);
@@ -470,13 +480,14 @@ namespace GunSlugsClone.EditorTools
             foreach (var roomGo in rooms) CollectAnchors(roomGo, anchors);
             SetPrivateField(spawner, "spawnAnchors", anchors);
 
+            // Five escalating waves; finale = chargers + flyer escort + boss.
             var waves = new List<WaveSpawner.WaveConfig>
             {
-                new WaveSpawner.WaveConfig { gruntCount = 3, chargerCount = 0, bossCount = 0 },
-                new WaveSpawner.WaveConfig { gruntCount = 4, chargerCount = 1, bossCount = 0 },
-                new WaveSpawner.WaveConfig { gruntCount = 5, chargerCount = 2, bossCount = 0 },
-                new WaveSpawner.WaveConfig { gruntCount = 6, chargerCount = 3, bossCount = 0 },
-                new WaveSpawner.WaveConfig { gruntCount = 0, chargerCount = 2, bossCount = 1 },
+                new WaveSpawner.WaveConfig { gruntCount = 3, chargerCount = 0, flyerCount = 0, bossCount = 0 },
+                new WaveSpawner.WaveConfig { gruntCount = 4, chargerCount = 1, flyerCount = 1, bossCount = 0 },
+                new WaveSpawner.WaveConfig { gruntCount = 5, chargerCount = 2, flyerCount = 2, bossCount = 0 },
+                new WaveSpawner.WaveConfig { gruntCount = 6, chargerCount = 3, flyerCount = 2, bossCount = 0 },
+                new WaveSpawner.WaveConfig { gruntCount = 0, chargerCount = 2, flyerCount = 3, bossCount = 1 },
             };
             SetPrivateField(spawner, "waves", waves);
             SetPrivateField(spawner, "startDelay", 0.6f);
@@ -913,9 +924,11 @@ namespace GunSlugsClone.EditorTools
 
         private static GameObject CreatePlayer()
         {
-            // Load pistol fresh at the moment of use — sidesteps the post-CreateAsset
-            // fake-null window that broke earlier attempts to pass the reference around.
-            var pistol = AssetDatabase.LoadAssetAtPath<WeaponData>(PistolAssetPath);
+            // Load all weapons fresh at the moment of use — sidesteps the
+            // post-CreateAsset fake-null window from earlier sessions.
+            var pistol  = AssetDatabase.LoadAssetAtPath<WeaponData>(PistolAssetPath);
+            var smg     = AssetDatabase.LoadAssetAtPath<WeaponData>(SmgAssetPath);
+            var shotgun = AssetDatabase.LoadAssetAtPath<WeaponData>(ShotgunAssetPath);
 
             var go = new GameObject("Player");
             go.transform.position = new Vector3(0, 0, 0);
@@ -968,10 +981,15 @@ namespace GunSlugsClone.EditorTools
             SetPrivateField(ctrl, "groundCheck", groundCheck.transform);
             SetPrivateField(ctrl, "extraJumps", 1); // single jump + 1 double-jump
             SetPrivateField(weaponHolder, "muzzle", muzzle.transform);
-            if (pistol != null)
-                SetPrivateField(weaponHolder, "startingLoadout", new List<WeaponData> { pistol });
-            else
-                Debug.LogError("[SmokeTestSetup] Pistol is null when wiring Player — bullets will not fire.");
+            // Player carries all three starting weapons; Q cycles between them
+            // (SwapWeapon action). maxCarried defaults to 3 so the slot is full.
+            var loadout = new List<WeaponData>();
+            if (pistol  != null) loadout.Add(pistol);
+            if (smg     != null) loadout.Add(smg);
+            if (shotgun != null) loadout.Add(shotgun);
+            if (loadout.Count == 0)
+                Debug.LogError("[SmokeTestSetup] All weapons null when wiring Player — bullets will not fire.");
+            SetPrivateField(weaponHolder, "startingLoadout", loadout);
             EditorUtility.SetDirty(ctrl);
             EditorUtility.SetDirty(weaponHolder);
 
@@ -1217,6 +1235,167 @@ namespace GunSlugsClone.EditorTools
             catch (System.Exception e)
             {
                 Debug.LogError($"[SmokeTestSetup] EnsurePistolAsset threw: {e}");
+            }
+        }
+
+        private static void EnsureSmgAsset()
+        {
+            try
+            {
+                EnsureFolder("Assets/ScriptableObjects/Weapons");
+                if (AssetDatabase.LoadMainAssetAtPath(SmgAssetPath) != null)
+                    AssetDatabase.DeleteAsset(SmgAssetPath);
+                var instance = ScriptableObject.CreateInstance<WeaponData>();
+                AssetDatabase.CreateAsset(instance, SmgAssetPath);
+                AssetDatabase.SaveAssets();
+                AssetDatabase.Refresh();
+                var smg = AssetDatabase.LoadAssetAtPath<WeaponData>(SmgAssetPath);
+                if (smg == null) return;
+
+                SetPrivateField(smg, "Id", "weapon_smg");
+                SetPrivateField(smg, "DisplayName", "SMG");
+                SetPrivateField(smg, "Mode", FireMode.Auto);
+                SetPrivateField(smg, "Damage", 4);
+                SetPrivateField(smg, "FireRate", 12f);
+                SetPrivateField(smg, "ProjectilesPerShot", 1);
+                SetPrivateField(smg, "SpreadDegrees", 5f);
+                SetPrivateField(smg, "ProjectileSpeed", 22f);
+                SetPrivateField(smg, "ProjectileLifetime", 1.5f);
+                SetPrivateField(smg, "Knockback", 0.5f);
+                SetPrivateField(smg, "Recoil", 0f);
+                SetPrivateField(smg, "Infinite", true);
+                SetPrivateField(smg, "MagazineSize", 30);
+                SetPrivateField(smg, "ReloadSeconds", 1.2f);
+
+                var bullet = AssetDatabase.LoadAssetAtPath<GameObject>(BulletPrefabPath);
+                if (bullet != null) SetPrivateField(smg, "ProjectilePrefab", bullet);
+                var flash = AssetDatabase.LoadAssetAtPath<GameObject>(MuzzleFlashPath);
+                if (flash != null) SetPrivateField(smg, "MuzzleFlashPrefab", flash);
+
+                EditorUtility.SetDirty(smg);
+                AssetDatabase.SaveAssets();
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[SmokeTestSetup] EnsureSmgAsset threw: {e}");
+            }
+        }
+
+        private static void EnsureShotgunAsset()
+        {
+            try
+            {
+                EnsureFolder("Assets/ScriptableObjects/Weapons");
+                if (AssetDatabase.LoadMainAssetAtPath(ShotgunAssetPath) != null)
+                    AssetDatabase.DeleteAsset(ShotgunAssetPath);
+                var instance = ScriptableObject.CreateInstance<WeaponData>();
+                AssetDatabase.CreateAsset(instance, ShotgunAssetPath);
+                AssetDatabase.SaveAssets();
+                AssetDatabase.Refresh();
+                var sg = AssetDatabase.LoadAssetAtPath<WeaponData>(ShotgunAssetPath);
+                if (sg == null) return;
+
+                SetPrivateField(sg, "Id", "weapon_shotgun");
+                SetPrivateField(sg, "DisplayName", "Shotgun");
+                SetPrivateField(sg, "Mode", FireMode.SemiAuto);
+                SetPrivateField(sg, "Damage", 6);
+                SetPrivateField(sg, "FireRate", 1.5f);
+                SetPrivateField(sg, "ProjectilesPerShot", 6);
+                SetPrivateField(sg, "SpreadDegrees", 25f);
+                SetPrivateField(sg, "ProjectileSpeed", 16f);
+                SetPrivateField(sg, "ProjectileLifetime", 1.2f);
+                SetPrivateField(sg, "Knockback", 2f);
+                SetPrivateField(sg, "Recoil", 0.1f);
+                SetPrivateField(sg, "Infinite", true);
+                SetPrivateField(sg, "MagazineSize", 6);
+                SetPrivateField(sg, "ReloadSeconds", 1.6f);
+
+                var bullet = AssetDatabase.LoadAssetAtPath<GameObject>(BulletPrefabPath);
+                if (bullet != null) SetPrivateField(sg, "ProjectilePrefab", bullet);
+                var flash = AssetDatabase.LoadAssetAtPath<GameObject>(MuzzleFlashPath);
+                if (flash != null) SetPrivateField(sg, "MuzzleFlashPrefab", flash);
+
+                EditorUtility.SetDirty(sg);
+                AssetDatabase.SaveAssets();
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[SmokeTestSetup] EnsureShotgunAsset threw: {e}");
+            }
+        }
+
+        private static void EnsureFlyerAssets()
+        {
+            try
+            {
+                EnsureFolder("Assets/ScriptableObjects/Enemies");
+                EnsureFolder("Assets/Prefabs");
+
+                if (AssetDatabase.LoadMainAssetAtPath(FlyerDataPath) != null)
+                    AssetDatabase.DeleteAsset(FlyerDataPath);
+                if (AssetDatabase.LoadMainAssetAtPath(FlyerPrefabPath) != null)
+                    AssetDatabase.DeleteAsset(FlyerPrefabPath);
+
+                var dataInstance = ScriptableObject.CreateInstance<EnemyData>();
+                AssetDatabase.CreateAsset(dataInstance, FlyerDataPath);
+                AssetDatabase.SaveAssets();
+                AssetDatabase.Refresh();
+                var data = AssetDatabase.LoadAssetAtPath<EnemyData>(FlyerDataPath);
+                if (data == null) return;
+
+                SetPrivateField(data, "Id", "enemy_flyer");
+                SetPrivateField(data, "DisplayName", "Flyer");
+                SetPrivateField(data, "Archetype", EnemyArchetype.Flyer);
+                SetPrivateField(data, "MaxHealth", 8);
+                SetPrivateField(data, "MoveSpeed", 3.5f);
+                SetPrivateField(data, "AggroRange", 14f);
+                SetPrivateField(data, "AttackRange", 1.0f);
+                SetPrivateField(data, "AttackCooldown", 0.8f);
+                SetPrivateField(data, "ContactDamage", 1);
+                SetPrivateField(data, "ScoreOnKill", 25);
+                EditorUtility.SetDirty(data);
+                AssetDatabase.SaveAssets();
+
+                var go = new GameObject("Enemy_Flyer");
+                var sr = go.AddComponent<SpriteRenderer>();
+                sr.sortingOrder = 1;
+                var sprite = LoadKenneySprite("character_flyer.png");
+                if (sprite != null)
+                {
+                    sr.sprite = sprite;
+                    sr.flipX = true;
+                    sr.color = new Color(0.6f, 0.7f, 1f); // bluish cold tint
+                }
+                else
+                {
+                    var ps = go.AddComponent<ProceduralSquare>();
+                    SetSerializedColor(ps, new Color(0.4f, 0.5f, 0.9f));
+                }
+
+                var rb = go.AddComponent<Rigidbody2D>();
+                rb.gravityScale = 0f; // flies
+                rb.freezeRotation = true;
+                rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+                rb.linearDamping = 1.5f; // gentle drag so it can hover
+
+                var col = go.AddComponent<BoxCollider2D>();
+                col.size = new Vector2(0.9f, 0.9f);
+
+                var ai = go.AddComponent<FlyerAI>();
+                SetPrivateField(ai, "data", data);
+                SetPrivateField(ai, "flashRenderer", sr);
+
+                var prefab = PrefabUtility.SaveAsPrefabAsset(go, FlyerPrefabPath);
+                Object.DestroyImmediate(go);
+
+                var prefabAsset = AssetDatabase.LoadAssetAtPath<GameObject>(FlyerPrefabPath);
+                SetPrivateField(data, "Prefab", prefabAsset);
+                EditorUtility.SetDirty(data);
+                AssetDatabase.SaveAssets();
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[SmokeTestSetup] EnsureFlyerAssets threw: {e}");
             }
         }
 
@@ -1534,12 +1713,15 @@ namespace GunSlugsClone.EditorTools
             // Auto-hide on desktop with a gamepad attached, show on mobile / touch.
             canvasGo.AddComponent<TouchControlsAutoVisibility>();
 
+            // Smaller / less invasive sizes — phone screens are usually
+            // 1080-2400 px, so 140 px joystick and 100 px buttons are
+            // reasonable thumb-reach without filling half the screen.
             CreateOnScreenStick(canvasGo.transform,
                 anchorMin: new Vector2(0f, 0f),
                 anchorMax: new Vector2(0f, 0f),
                 pivot: new Vector2(0f, 0f),
-                anchoredPos: new Vector2(80f, 80f),
-                size: new Vector2(280f, 280f),
+                anchoredPos: new Vector2(60f, 60f),
+                size: new Vector2(140f, 140f),
                 controlPath: "<Gamepad>/leftStick");
 
             CreateOnScreenButton(canvasGo.transform,
@@ -1547,8 +1729,8 @@ namespace GunSlugsClone.EditorTools
                 anchorMin: new Vector2(1f, 0f),
                 anchorMax: new Vector2(1f, 0f),
                 pivot: new Vector2(1f, 0f),
-                anchoredPos: new Vector2(-260f, 100f),
-                size: new Vector2(180f, 180f),
+                anchoredPos: new Vector2(-160f, 70f),
+                size: new Vector2(100f, 100f),
                 controlPath: "<Keyboard>/space");
 
             CreateOnScreenButton(canvasGo.transform,
@@ -1556,8 +1738,8 @@ namespace GunSlugsClone.EditorTools
                 anchorMin: new Vector2(1f, 0f),
                 anchorMax: new Vector2(1f, 0f),
                 pivot: new Vector2(1f, 0f),
-                anchoredPos: new Vector2(-60f, 200f),
-                size: new Vector2(220f, 220f),
+                anchoredPos: new Vector2(-40f, 130f),
+                size: new Vector2(120f, 120f),
                 controlPath: "<Keyboard>/leftCtrl");
         }
 
