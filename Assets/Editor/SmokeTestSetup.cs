@@ -28,6 +28,21 @@ namespace GunSlugsClone.EditorTools
         private const string EnemyDataPath   = "Assets/ScriptableObjects/Enemies/enemy_grunt.asset";
         private const string EnemyPrefabPath  = "Assets/Prefabs/Enemy_Grunt.prefab";
 
+        private const string KenneySource = "/Users/raksithlochabb/Downloads/kenneypack/kenney_pixel-platformer";
+        private const string KenneyDest   = "Assets/Art/Kenney";
+
+        // Curated subset of the Kenney pixel-platformer pack copied into the
+        // project on first build. Once these PNGs are committed they ride along
+        // with the repo, so a fresh clone on another machine doesn't need the
+        // user's Downloads folder.
+        private static readonly (string src, string dst, int pixelsPerUnit)[] KenneyFiles = new[]
+        {
+            ("Tiles/Characters/tile_0000.png", "character_player.png", 24),
+            ("Tiles/Characters/tile_0024.png", "character_enemy.png",  24),
+            ("Tiles/tile_0006.png",            "tile_floor.png",       18),
+            ("Tiles/tile_0046.png",            "tile_wall.png",        18),
+        };
+
         [MenuItem("GunSlugs/Build Smoke Test Scene")]
         public static void Build()
         {
@@ -41,6 +56,7 @@ namespace GunSlugsClone.EditorTools
             }
 
             EnsureFolder("Assets/Scenes");
+            ImportKenneyArt();
             EnsureBulletPrefab();
             EnsurePistolAsset();
             EnsureEnemyAssets();
@@ -127,25 +143,46 @@ namespace GunSlugsClone.EditorTools
             const float halfWidth = 15f;
             const float halfHeight = 7f;
 
+            var floorSprite = LoadKenneySprite("tile_floor.png");
+            var wallSprite  = LoadKenneySprite("tile_wall.png");
+
             var room = new GameObject("Room");
 
-            BuildSlab(room.transform, "Floor",     new Vector3(0f, -halfHeight, 0f), new Vector3(halfWidth * 2f, 1f, 1f), new Color(0.42f, 0.70f, 0.34f));
-            BuildSlab(room.transform, "Ceiling",   new Vector3(0f,  halfHeight, 0f), new Vector3(halfWidth * 2f, 1f, 1f), new Color(0.25f, 0.28f, 0.32f));
-            BuildSlab(room.transform, "WallLeft",  new Vector3(-halfWidth, 0f, 0f),  new Vector3(1f, halfHeight * 2f, 1f), new Color(0.25f, 0.28f, 0.32f));
-            BuildSlab(room.transform, "WallRight", new Vector3( halfWidth, 0f, 0f),  new Vector3(1f, halfHeight * 2f, 1f), new Color(0.25f, 0.28f, 0.32f));
+            BuildSlab(room.transform, "Floor",     new Vector3(0f, -halfHeight, 0f), new Vector2(halfWidth * 2f, 1f), new Color(0.42f, 0.70f, 0.34f), floorSprite);
+            BuildSlab(room.transform, "Ceiling",   new Vector3(0f,  halfHeight, 0f), new Vector2(halfWidth * 2f, 1f), new Color(0.25f, 0.28f, 0.32f), wallSprite);
+            BuildSlab(room.transform, "WallLeft",  new Vector3(-halfWidth, 0f, 0f),  new Vector2(1f, halfHeight * 2f), new Color(0.25f, 0.28f, 0.32f), wallSprite);
+            BuildSlab(room.transform, "WallRight", new Vector3( halfWidth, 0f, 0f),  new Vector2(1f, halfHeight * 2f), new Color(0.25f, 0.28f, 0.32f), wallSprite);
         }
 
-        private static void BuildSlab(Transform parent, string name, Vector3 position, Vector3 scale, Color color)
+        private static void BuildSlab(Transform parent, string name, Vector3 position, Vector2 size, Color fallbackColor, Sprite tileSprite)
         {
             var go = new GameObject(name);
             go.transform.SetParent(parent, worldPositionStays: false);
             go.transform.position = position;
-            go.transform.localScale = scale;
-            go.AddComponent<SpriteRenderer>();
-            var ps = go.AddComponent<ProceduralSquare>();
-            SetSerializedColor(ps, color);
-            var col = go.AddComponent<BoxCollider2D>();
-            col.size = new Vector2(1f, 1f);
+            go.transform.localScale = Vector3.one;
+
+            var sr = go.AddComponent<SpriteRenderer>();
+            BoxCollider2D col;
+            if (tileSprite != null)
+            {
+                // Tiled draw mode repeats the sprite across the GameObject's size,
+                // so we get e.g. 30 tiles of grass in a 30-wide floor without
+                // stretching one sprite.
+                sr.sprite = tileSprite;
+                sr.drawMode = SpriteDrawMode.Tiled;
+                sr.tileMode = SpriteTileMode.Continuous;
+                sr.size = size;
+                col = go.AddComponent<BoxCollider2D>();
+                col.size = size;
+            }
+            else
+            {
+                go.transform.localScale = new Vector3(size.x, size.y, 1f);
+                var ps = go.AddComponent<ProceduralSquare>();
+                SetSerializedColor(ps, fallbackColor);
+                col = go.AddComponent<BoxCollider2D>();
+                col.size = new Vector2(1f, 1f);
+            }
         }
 
         private static GameObject CreatePlayer()
@@ -159,8 +196,16 @@ namespace GunSlugsClone.EditorTools
 
             var sr = go.AddComponent<SpriteRenderer>();
             sr.sortingOrder = 1;
-            var ps = go.AddComponent<ProceduralSquare>();
-            SetSerializedColor(ps, new Color(0.95f, 0.62f, 0.20f));
+            var playerSprite = LoadKenneySprite("character_player.png");
+            if (playerSprite != null)
+            {
+                sr.sprite = playerSprite;
+            }
+            else
+            {
+                var ps = go.AddComponent<ProceduralSquare>();
+                SetSerializedColor(ps, new Color(0.95f, 0.62f, 0.20f));
+            }
 
             var rb = go.AddComponent<Rigidbody2D>();
             rb.gravityScale = 3.5f;
@@ -220,6 +265,62 @@ namespace GunSlugsClone.EditorTools
             SetPrivateField(bar, "fullWidth", 1f);
             SetPrivateField(bar, "thickness", 0.15f);
         }
+
+        private static void ImportKenneyArt()
+        {
+            try
+            {
+                if (!Directory.Exists(KenneySource))
+                {
+                    // First-clone or different machine — Kenney files already in repo.
+                    return;
+                }
+                EnsureFolder("Assets/Art");
+                EnsureFolder(KenneyDest);
+
+                var anyCopied = false;
+                foreach (var (src, dst, _) in KenneyFiles)
+                {
+                    var srcPath = Path.Combine(KenneySource, src);
+                    var dstPath = $"{KenneyDest}/{dst}";
+                    if (!File.Exists(srcPath))
+                    {
+                        Debug.LogWarning($"[SmokeTestSetup] Kenney source missing: {srcPath}");
+                        continue;
+                    }
+                    if (File.Exists(dstPath)) continue;
+                    File.Copy(srcPath, dstPath, overwrite: false);
+                    anyCopied = true;
+                }
+                if (anyCopied) AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+
+                foreach (var (_, dst, ppu) in KenneyFiles)
+                {
+                    var dstPath = $"{KenneyDest}/{dst}";
+                    var importer = AssetImporter.GetAtPath(dstPath) as TextureImporter;
+                    if (importer == null) continue;
+                    var alreadyConfigured =
+                        importer.textureType == TextureImporterType.Sprite &&
+                        Mathf.Approximately(importer.spritePixelsPerUnit, ppu) &&
+                        importer.filterMode == FilterMode.Point;
+                    if (alreadyConfigured) continue;
+                    importer.textureType = TextureImporterType.Sprite;
+                    importer.spriteImportMode = SpriteImportMode.Single;
+                    importer.spritePixelsPerUnit = ppu;
+                    importer.filterMode = FilterMode.Point;
+                    importer.mipmapEnabled = false;
+                    importer.wrapMode = TextureWrapMode.Clamp;
+                    importer.SaveAndReimport();
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[SmokeTestSetup] ImportKenneyArt threw: {e.Message}");
+            }
+        }
+
+        private static Sprite LoadKenneySprite(string fileName)
+            => AssetDatabase.LoadAssetAtPath<Sprite>($"{KenneyDest}/{fileName}");
 
         private static void SetPrivateField(object target, string fieldName, object value)
         {
@@ -371,8 +472,16 @@ namespace GunSlugsClone.EditorTools
                 var go = new GameObject("Enemy_Grunt");
                 var sr = go.AddComponent<SpriteRenderer>();
                 sr.sortingOrder = 1;
-                var ps = go.AddComponent<ProceduralSquare>();
-                SetSerializedColor(ps, new Color(0.9f, 0.25f, 0.25f));
+                var enemySprite = LoadKenneySprite("character_enemy.png");
+                if (enemySprite != null)
+                {
+                    sr.sprite = enemySprite;
+                }
+                else
+                {
+                    var ps = go.AddComponent<ProceduralSquare>();
+                    SetSerializedColor(ps, new Color(0.9f, 0.25f, 0.25f));
+                }
 
                 var rb = go.AddComponent<Rigidbody2D>();
                 rb.gravityScale = 3.5f;

@@ -20,7 +20,10 @@ namespace GunSlugsClone.Core
         {
             var sr = GetComponent<SpriteRenderer>();
             if (sr == null) return;
-            sr.sprite = GetSharedSprite();
+            // If something already populated the sprite (e.g. a real Kenney
+            // texture imported into the scene), don't clobber it. Just apply
+            // the tint.
+            if (sr.sprite == null) sr.sprite = GetSharedSprite();
             sr.color = color;
         }
 
