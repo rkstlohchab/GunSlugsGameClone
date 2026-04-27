@@ -20,6 +20,10 @@ namespace GunSlugsClone.Core
         [SerializeField] private float coneAngleDegrees = 360f;
         [SerializeField] private Vector2 baseDirection = Vector2.up;
         [SerializeField] private int sortingOrder = 10;
+        // Optional override — if assigned via the Editor, particles use this
+        // sprite (e.g. a Kenney flash/explosion frame) instead of the runtime
+        // white square. Lets us swap to real art without rewriting the burst.
+        [SerializeField] private Sprite overrideSprite;
 
         private static Sprite _sharedSprite;
 
@@ -27,7 +31,7 @@ namespace GunSlugsClone.Core
 
         private void Burst()
         {
-            var sprite = GetSharedSprite();
+            var sprite = overrideSprite != null ? overrideSprite : GetSharedSprite();
             for (var i = 0; i < count; i++)
             {
                 var p = new GameObject($"Particle_{i}");

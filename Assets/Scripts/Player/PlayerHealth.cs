@@ -10,6 +10,8 @@ namespace GunSlugsClone.Player
         [SerializeField] private float invulnerabilityOnHit = 0.8f;
         [SerializeField] private SpriteRenderer flashRenderer;
         [SerializeField] private Color flashColor = Color.white;
+        [SerializeField] private AudioClip hurtSfx;
+        [SerializeField] private AudioClip deathSfx;
 
         public int Current { get; private set; }
         public int Max => maxHealth;
@@ -37,6 +39,7 @@ namespace GunSlugsClone.Player
             _invulnTimer = invulnerabilityOnHit;
             EventBus.Publish(new PlayerDamagedEvent(playerIndex, amount, Current));
             if (flashRenderer != null) StartCoroutine(HitFlash());
+            if (hurtSfx != null) AudioManager.Instance?.PlaySfx(hurtSfx, transform.position);
             if (Current == 0) Die();
         }
 
@@ -51,7 +54,11 @@ namespace GunSlugsClone.Player
             if (seconds > _invulnTimer) _invulnTimer = seconds;
         }
 
-        private void Die() => EventBus.Publish(new PlayerDiedEvent(playerIndex));
+        private void Die()
+        {
+            if (deathSfx != null) AudioManager.Instance?.PlaySfx(deathSfx, transform.position);
+            EventBus.Publish(new PlayerDiedEvent(playerIndex));
+        }
 
         private System.Collections.IEnumerator HitFlash()
         {

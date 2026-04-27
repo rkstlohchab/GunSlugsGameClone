@@ -1,3 +1,4 @@
+using GunSlugsClone.Core;
 using UnityEngine;
 
 namespace GunSlugsClone.Player
@@ -11,6 +12,7 @@ namespace GunSlugsClone.Player
     {
         [SerializeField] private int healAmount = 1;
         [SerializeField] private float lifetime = 12f;
+        [SerializeField] private AudioClip pickupSfx;
 
         private void Start()
         {
@@ -21,6 +23,7 @@ namespace GunSlugsClone.Player
         {
             if (!other.TryGetComponent<PlayerHealth>(out var ph)) return;
             ph.Heal(healAmount);
+            if (pickupSfx != null) AudioManager.Instance?.PlaySfx(pickupSfx, transform.position);
             Destroy(gameObject);
         }
     }

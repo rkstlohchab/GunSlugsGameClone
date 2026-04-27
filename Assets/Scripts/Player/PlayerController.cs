@@ -33,6 +33,9 @@ namespace GunSlugsClone.Player
         [SerializeField] private float groundCheckRadius = 0.15f;
         [SerializeField] private LayerMask groundMask = ~0;
 
+        [Header("Audio")]
+        [SerializeField] private AudioClip jumpSfx;
+
         private Rigidbody2D _rb;
         private PlayerHealth _health;
         private WeaponHolder _weapon;
@@ -185,6 +188,7 @@ namespace GunSlugsClone.Player
             var v = _rb.linearVelocity;
             v.y = jumpVelocity;
             _rb.linearVelocity = v;
+            if (jumpSfx != null) AudioManager.Instance?.PlaySfx(jumpSfx, transform.position);
         }
 
         private void UpdateFacing()

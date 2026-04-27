@@ -17,25 +17,29 @@ Anything from a commercial title (sprites, audio, names, fonts) is **forbidden**
 
 | Asset | Author | Source | License | Used For | Notes |
 |---|---|---|---|---|---|
-| *(none yet)* | | | | | |
+| Kenney "Pixel Platformer" | Kenney (Asset Jesus) | kenney.nl/assets/pixel-platformer | CC0 | Player + enemy + tile sprites; parallax background tiles | `Assets/Art/Kenney/character_*.png`, `tile_*.png`, `Backgrounds/tile_*.png` |
+| Kenney "Smoke Particle Assets" | Kenney | kenney.nl/assets/smoke-particles | CC0 | Muzzle-flash + death-explosion frames | `Assets/Art/Kenney/Particles/flash*.png`, `explosion*.png` |
+| Kenney "Particle Pack" | Kenney | kenney.nl/assets/particle-pack | CC0 | Spark / muzzle / smoke supplemental particles | `Assets/Art/Kenney/Particles/spark_03.png`, `muzzle_02.png`, `smoke_03.png` |
 
 ## Audio — Music
 
 | Track | Author | Source | License | Used For | Notes |
 |---|---|---|---|---|---|
-| *(none yet)* | | | | | |
+| *(none yet — biome music TBD by user)* | | | | | |
 
 ## Audio — SFX
 
 | SFX | Author | Source | License | Used For | Notes |
 |---|---|---|---|---|---|
-| *(none yet)* | | | | | |
+| Kenney "Sci-Fi Sounds" | Kenney | kenney.nl/assets/sci-fi-sounds | CC0 | Pistol / SMG / shotgun / sniper / rocket / reload SFX | `Assets/Audio/SFX/sfx_pistol.ogg`, `sfx_smg.ogg`, `sfx_shotgun.ogg`, `sfx_sniper.ogg`, `sfx_rocket.ogg`, `sfx_reload.ogg`, `sfx_death.ogg` |
+| Kenney "Digital Audio Pack" | Kenney | kenney.nl/assets/digital-audio | CC0 | Jump + pickup SFX | `Assets/Audio/SFX/sfx_jump.ogg`, `sfx_pickup.ogg` |
+| Kenney "Impact Sounds" | Kenney | kenney.nl/assets/impact-sounds | CC0 | Knife swing + enemy hit + player hurt SFX | `Assets/Audio/SFX/sfx_knife.ogg`, `sfx_enemy_hit.ogg`, `sfx_hurt.ogg` |
 
 ## Fonts
 
 | Font | Author | Source | License | Used For | Notes |
 |---|---|---|---|---|---|
-| *(none yet)* | | | | | |
+| Kenney Pixel | Kenney | kenney.nl/assets/kenney-fonts | CC0 | Pixel-art font for HUD / menus (TMP asset to be generated in M5 polish) | `Assets/Fonts/Kenney_Pixel.ttf` |
 
 ## Code / Plugins
 

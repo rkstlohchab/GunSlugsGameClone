@@ -56,6 +56,9 @@ namespace GunSlugsClone.EditorTools
 
         private const string KenneySource = "/Users/raksithlochabb/Downloads/kenneypack/kenney_pixel-platformer";
         private const string KenneyDest   = "Assets/Art/Kenney";
+        private const string KenneyParticlesDir   = "Assets/Art/Kenney/Particles";
+        private const string KenneyBackgroundsDir = "Assets/Art/Kenney/Backgrounds";
+        private const string SfxDir       = "Assets/Audio/SFX";
 
         // Curated subset of the Kenney pixel-platformer pack copied into the
         // project on first build. Once these PNGs are committed they ride along
@@ -89,6 +92,7 @@ namespace GunSlugsClone.EditorTools
 
             EnsureFolder("Assets/Scenes");
             ImportKenneyArt();
+            ConfigureExtraKenneyImports();
             EnsureBulletPrefab();
             EnsureMuzzleFlashPrefab();
             EnsurePistolAsset();
@@ -245,6 +249,7 @@ namespace GunSlugsClone.EditorTools
                 SetPrivateField(data, "AttackCooldown", 0.6f);
                 SetPrivateField(data, "ContactDamage", 10);
                 SetPrivateField(data, "ScoreOnKill", 20);
+                AssignEnemySfx(data, "sfx_enemy_hit.ogg", "sfx_death.ogg");
                 EditorUtility.SetDirty(data);
                 AssetDatabase.SaveAssets();
 
@@ -747,6 +752,7 @@ namespace GunSlugsClone.EditorTools
                 SetPrivateField(data, "AttackCooldown", 0.7f);
                 SetPrivateField(data, "ContactDamage", 20);
                 SetPrivateField(data, "ScoreOnKill", 200);
+                AssignEnemySfx(data, "sfx_enemy_hit.ogg", "sfx_death.ogg");
                 EditorUtility.SetDirty(data);
                 AssetDatabase.SaveAssets();
 
@@ -1024,6 +1030,12 @@ namespace GunSlugsClone.EditorTools
             // EditorUtility.SetDirty marks the component for save.
             SetPrivateField(ctrl, "groundCheck", groundCheck.transform);
             SetPrivateField(ctrl, "extraJumps", 1); // single jump + 1 double-jump
+            var jumpClip = LoadSfx("sfx_jump.ogg");
+            if (jumpClip != null) SetPrivateField(ctrl, "jumpSfx", jumpClip);
+            var hurtClip = LoadSfx("sfx_hurt.ogg");
+            if (hurtClip != null) SetPrivateField(playerHealth, "hurtSfx", hurtClip);
+            var deathClip = LoadSfx("sfx_death.ogg");
+            if (deathClip != null) SetPrivateField(playerHealth, "deathSfx", deathClip);
             SetPrivateField(weaponHolder, "muzzle", muzzle.transform);
             // Player carries all six starting weapons; Q (SwapWeapon action)
             // cycles between them. maxCarried bumped to 6 so the slot is full.
@@ -1129,6 +1141,97 @@ namespace GunSlugsClone.EditorTools
             {
                 Debug.LogError($"[SmokeTestSetup] ImportKenneyArt threw: {e.Message}");
             }
+        }
+
+        // Walks Assets/Art/Kenney/Particles and Assets/Art/Kenney/Backgrounds
+        // and forces each PNG to import as a Sprite with Point filter / FullRect
+        // mesh / no compression. Without this, files dragged in fresh on macOS
+        // import as Default Texture and SpriteRenderer.sprite stays null.
+        private static void ConfigureExtraKenneyImports()
+        {
+            try
+            {
+                ConfigureSpriteFolder(KenneyParticlesDir, pixelsPerUnit: 32);
+                ConfigureSpriteFolder(KenneyBackgroundsDir, pixelsPerUnit: 18);
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[SmokeTestSetup] ConfigureExtraKenneyImports threw: {e.Message}");
+            }
+        }
+
+        private static void ConfigureSpriteFolder(string folder, int pixelsPerUnit)
+        {
+            if (!Directory.Exists(folder)) return;
+            foreach (var path in Directory.GetFiles(folder, "*.png", SearchOption.TopDirectoryOnly))
+            {
+                var importer = AssetImporter.GetAtPath(path) as TextureImporter;
+                if (importer == null) continue;
+                var settings = new TextureImporterSettings();
+                importer.ReadTextureSettings(settings);
+                var alreadyConfigured =
+                    importer.textureType == TextureImporterType.Sprite &&
+                    Mathf.Approximately(importer.spritePixelsPerUnit, pixelsPerUnit) &&
+                    importer.filterMode == FilterMode.Point &&
+                    settings.spriteMeshType == SpriteMeshType.FullRect;
+                if (alreadyConfigured) continue;
+
+                settings.textureType = TextureImporterType.Sprite;
+                settings.spriteMode = (int)SpriteImportMode.Single;
+                settings.spritePixelsPerUnit = pixelsPerUnit;
+                settings.filterMode = FilterMode.Point;
+                settings.mipmapEnabled = false;
+                settings.wrapMode = TextureWrapMode.Clamp;
+                settings.spriteMeshType = SpriteMeshType.FullRect;
+                settings.npotScale = TextureImporterNPOTScale.None;
+                importer.SetTextureSettings(settings);
+                importer.textureCompression = TextureImporterCompression.Uncompressed;
+                importer.SaveAndReimport();
+            }
+        }
+
+        private static AudioClip LoadSfx(string fileName)
+        {
+            return AssetDatabase.LoadAssetAtPath<AudioClip>($"{SfxDir}/{fileName}");
+        }
+
+        private static Sprite LoadParticleSprite(string fileName)
+        {
+            return AssetDatabase.LoadAssetAtPath<Sprite>($"{KenneyParticlesDir}/{fileName}");
+        }
+
+        private static Sprite LoadBgSprite(string fileName)
+        {
+            return AssetDatabase.LoadAssetAtPath<Sprite>($"{KenneyBackgroundsDir}/{fileName}");
+        }
+
+        // Loads + assigns FireSfx (and optional ReloadSfx) on a WeaponData asset
+        // via reflection — same SetPrivateField pattern the rest of the file
+        // uses to author SO fields without exposing them as public.
+        private static void AssignEnemySfx(EnemyData data, string hitFile, string deathFile)
+        {
+            if (data == null) return;
+            var hit = LoadSfx(hitFile);
+            if (hit != null) SetPrivateField(data, "HitSfx", hit);
+            var death = LoadSfx(deathFile);
+            if (death != null) SetPrivateField(data, "DeathSfx", death);
+            EditorUtility.SetDirty(data);
+        }
+
+        private static void AssignWeaponSfx(WeaponData data, string fireFile, string reloadFile)
+        {
+            if (data == null) return;
+            if (!string.IsNullOrEmpty(fireFile))
+            {
+                var clip = LoadSfx(fireFile);
+                if (clip != null) SetPrivateField(data, "FireSfx", clip);
+            }
+            if (!string.IsNullOrEmpty(reloadFile))
+            {
+                var clip = LoadSfx(reloadFile);
+                if (clip != null) SetPrivateField(data, "ReloadSfx", clip);
+            }
+            EditorUtility.SetDirty(data);
         }
 
         private static Sprite LoadKenneySprite(string fileName)
@@ -1277,6 +1380,8 @@ namespace GunSlugsClone.EditorTools
                 if (muzzleFlashPrefab != null)
                     SetPrivateField(pistol, "MuzzleFlashPrefab", muzzleFlashPrefab);
 
+                AssignWeaponSfx(pistol, "sfx_pistol.ogg", "sfx_reload.ogg");
+
                 EditorUtility.SetDirty(pistol);
                 AssetDatabase.SaveAssets();
                 AssetDatabase.Refresh();
@@ -1321,6 +1426,8 @@ namespace GunSlugsClone.EditorTools
                 var flash = AssetDatabase.LoadAssetAtPath<GameObject>(MuzzleFlashPath);
                 if (flash != null) SetPrivateField(smg, "MuzzleFlashPrefab", flash);
 
+                AssignWeaponSfx(smg, "sfx_smg.ogg", "sfx_reload.ogg");
+
                 EditorUtility.SetDirty(smg);
                 AssetDatabase.SaveAssets();
             }
@@ -1363,6 +1470,8 @@ namespace GunSlugsClone.EditorTools
                 if (bullet != null) SetPrivateField(sg, "ProjectilePrefab", bullet);
                 var flash = AssetDatabase.LoadAssetAtPath<GameObject>(MuzzleFlashPath);
                 if (flash != null) SetPrivateField(sg, "MuzzleFlashPrefab", flash);
+
+                AssignWeaponSfx(sg, "sfx_shotgun.ogg", "sfx_reload.ogg");
 
                 EditorUtility.SetDirty(sg);
                 AssetDatabase.SaveAssets();
@@ -1407,6 +1516,8 @@ namespace GunSlugsClone.EditorTools
                 var flash = AssetDatabase.LoadAssetAtPath<GameObject>(MuzzleFlashPath);
                 if (flash != null) SetPrivateField(rl, "MuzzleFlashPrefab", flash);
 
+                AssignWeaponSfx(rl, "sfx_rocket.ogg", "sfx_reload.ogg");
+
                 EditorUtility.SetDirty(rl);
                 AssetDatabase.SaveAssets();
             }
@@ -1447,6 +1558,8 @@ namespace GunSlugsClone.EditorTools
                 var flash = AssetDatabase.LoadAssetAtPath<GameObject>(MuzzleFlashPath);
                 if (flash != null) SetPrivateField(sn, "MuzzleFlashPrefab", flash);
 
+                AssignWeaponSfx(sn, "sfx_sniper.ogg", "sfx_reload.ogg");
+
                 EditorUtility.SetDirty(sn);
                 AssetDatabase.SaveAssets();
             }
@@ -1483,6 +1596,8 @@ namespace GunSlugsClone.EditorTools
                 SetPrivateField(kn, "ReloadSeconds", 0f);
                 SetPrivateField(kn, "MeleeRange", 1.6f);
 
+                AssignWeaponSfx(kn, "sfx_knife.ogg", null);
+
                 EditorUtility.SetDirty(kn);
                 AssetDatabase.SaveAssets();
             }
@@ -1518,6 +1633,7 @@ namespace GunSlugsClone.EditorTools
                 SetPrivateField(data, "AttackCooldown", 0.8f);
                 SetPrivateField(data, "ContactDamage", 10);
                 SetPrivateField(data, "ScoreOnKill", 25);
+                AssignEnemySfx(data, "sfx_enemy_hit.ogg", "sfx_death.ogg");
                 EditorUtility.SetDirty(data);
                 AssetDatabase.SaveAssets();
 
@@ -1601,6 +1717,7 @@ namespace GunSlugsClone.EditorTools
                 SetPrivateField(enemyData, "AttackCooldown", 1.0f);
                 SetPrivateField(enemyData, "ContactDamage", 10);
                 SetPrivateField(enemyData, "ScoreOnKill", 10);
+                AssignEnemySfx(enemyData, "sfx_enemy_hit.ogg", "sfx_death.ogg");
                 EditorUtility.SetDirty(enemyData);
                 AssetDatabase.SaveAssets();
 
@@ -1688,15 +1805,19 @@ namespace GunSlugsClone.EditorTools
 
                 var go = new GameObject("Vfx_DeathBurst");
                 var burst = go.AddComponent<SimpleParticleBurst>();
-                SetPrivateField(burst, "count", 18);
+                SetPrivateField(burst, "count", 14);
                 SetPrivateField(burst, "speed", 5.5f);
                 SetPrivateField(burst, "speedJitter", 1.5f);
                 SetPrivateField(burst, "lifetime", 0.7f);
-                SetPrivateField(burst, "size", 0.18f);
-                SetPrivateField(burst, "color", new Color(1f, 0.35f, 0.35f, 1f));
+                SetPrivateField(burst, "size", 0.7f);
+                SetPrivateField(burst, "color", new Color(1f, 0.65f, 0.30f, 1f));
                 SetPrivateField(burst, "gravityScale", 1.4f);
                 SetPrivateField(burst, "coneAngleDegrees", 360f);
                 SetPrivateField(burst, "sortingOrder", 10);
+                // Real Kenney explosion frame replaces the runtime-generated white square.
+                var explosionSprite = LoadParticleSprite("explosion04.png");
+                if (explosionSprite != null)
+                    SetPrivateField(burst, "overrideSprite", explosionSprite);
 
                 PrefabUtility.SaveAsPrefabAsset(go, DeathBurstPath);
                 Object.DestroyImmediate(go);
@@ -1717,16 +1838,20 @@ namespace GunSlugsClone.EditorTools
 
                 var go = new GameObject("Vfx_MuzzleFlash");
                 var burst = go.AddComponent<SimpleParticleBurst>();
-                SetPrivateField(burst, "count", 8);
-                SetPrivateField(burst, "speed", 4f);
+                SetPrivateField(burst, "count", 6);
+                SetPrivateField(burst, "speed", 3.5f);
                 SetPrivateField(burst, "speedJitter", 1f);
-                SetPrivateField(burst, "lifetime", 0.25f);
-                SetPrivateField(burst, "size", 0.15f);
-                SetPrivateField(burst, "color", new Color(1f, 0.92f, 0.40f, 1f));
+                SetPrivateField(burst, "lifetime", 0.18f);
+                SetPrivateField(burst, "size", 0.55f);
+                SetPrivateField(burst, "color", new Color(1f, 0.95f, 0.65f, 1f));
                 SetPrivateField(burst, "gravityScale", 0f);
                 SetPrivateField(burst, "coneAngleDegrees", 35f);
                 SetPrivateField(burst, "baseDirection", Vector2.up);
                 SetPrivateField(burst, "sortingOrder", 10);
+                // Kenney muzzle-flash sprite — far better than the white square.
+                var flashSprite = LoadParticleSprite("flash00.png");
+                if (flashSprite != null)
+                    SetPrivateField(burst, "overrideSprite", flashSprite);
 
                 PrefabUtility.SaveAsPrefabAsset(go, MuzzleFlashPath);
                 Object.DestroyImmediate(go);
@@ -1789,7 +1914,9 @@ namespace GunSlugsClone.EditorTools
                 pickupTrigger.isTrigger = true;
                 pickupTrigger.radius = 0.6f;
 
-                go.AddComponent<HealthPickup>();
+                var pickup = go.AddComponent<HealthPickup>();
+                var pickupClip = LoadSfx("sfx_pickup.ogg");
+                if (pickupClip != null) SetPrivateField(pickup, "pickupSfx", pickupClip);
 
                 PrefabUtility.SaveAsPrefabAsset(go, HealthPickupPath);
                 Object.DestroyImmediate(go);
@@ -1823,24 +1950,81 @@ namespace GunSlugsClone.EditorTools
             var width = (maxX - minX) + 80f; // 40 of margin each side
             var height = 40f;
 
-            var go = new GameObject("Background");
-            go.transform.position = new Vector3(centerX, 0f, 0f);
-            var sr = go.AddComponent<SpriteRenderer>();
-            sr.sortingOrder = -50;
-            var bg = LoadKenneySprite("tile_bg.png");
-            if (bg != null)
+            var root = new GameObject("Parallax");
+            root.transform.position = Vector3.zero;
+
+            // Layer 0 — solid sky. Uses tile_bg if present, otherwise a tinted
+            // ProceduralSquare. Sits behind everything else.
+            var sky = new GameObject("Parallax_Sky");
+            sky.transform.SetParent(root.transform, worldPositionStays: false);
+            sky.transform.position = new Vector3(centerX, 0f, 0f);
+            var skySr = sky.AddComponent<SpriteRenderer>();
+            skySr.sortingOrder = -60;
+            var bgTile = LoadKenneySprite("tile_bg.png");
+            if (bgTile != null)
             {
-                sr.sprite = bg;
-                sr.drawMode = SpriteDrawMode.Tiled;
-                sr.tileMode = SpriteTileMode.Continuous;
-                sr.size = new Vector2(width, height);
+                skySr.sprite = bgTile;
+                skySr.drawMode = SpriteDrawMode.Tiled;
+                skySr.tileMode = SpriteTileMode.Continuous;
+                skySr.size = new Vector2(width, height);
+                skySr.color = new Color(0.55f, 0.75f, 0.95f, 1f); // sky tint
             }
             else
             {
-                go.transform.localScale = new Vector3(width, height, 1f);
-                var ps = go.AddComponent<ProceduralSquare>();
-                SetSerializedColor(ps, new Color(0.10f, 0.16f, 0.24f));
+                sky.transform.localScale = new Vector3(width, height, 1f);
+                var ps = sky.AddComponent<ProceduralSquare>();
+                SetSerializedColor(ps, new Color(0.55f, 0.75f, 0.95f));
             }
+
+            // Layer 1 — far hills (slow scroll, parallaxFactor 0.2).
+            CreateParallaxStrip(root.transform, "Parallax_FarHills", "tile_0001.png",
+                tileWidth: 6f, tileHeight: 4f, count: Mathf.CeilToInt(width / 6f) + 4,
+                yOffset: -2f, sortingOrder: -55, parallaxFactor: 0.2f, centerX: centerX,
+                tint: new Color(0.65f, 0.78f, 0.85f));
+
+            // Layer 2 — mid clouds/trees (parallaxFactor 0.5).
+            CreateParallaxStrip(root.transform, "Parallax_Mid", "tile_0003.png",
+                tileWidth: 5f, tileHeight: 3.5f, count: Mathf.CeilToInt(width / 5f) + 4,
+                yOffset: 4.5f, sortingOrder: -54, parallaxFactor: 0.5f, centerX: centerX,
+                tint: new Color(0.95f, 0.95f, 1f, 0.85f));
+
+            // Layer 3 — near foreground silhouettes (parallaxFactor 0.85).
+            CreateParallaxStrip(root.transform, "Parallax_Near", "tile_0005.png",
+                tileWidth: 4f, tileHeight: 3f, count: Mathf.CeilToInt(width / 4f) + 4,
+                yOffset: -3f, sortingOrder: -53, parallaxFactor: 0.85f, centerX: centerX,
+                tint: new Color(0.45f, 0.55f, 0.55f));
+        }
+
+        // Spawns one parallax layer GO with `count` evenly-spaced tile sprites
+        // as children, then attaches a ParallaxLayer component so the whole
+        // strip drifts at `parallaxFactor` of camera movement.
+        private static void CreateParallaxStrip(
+            Transform parent, string name, string spriteFile,
+            float tileWidth, float tileHeight, int count,
+            float yOffset, int sortingOrder, float parallaxFactor, float centerX, Color tint)
+        {
+            var sprite = LoadBgSprite(spriteFile);
+            if (sprite == null) return; // sprite not imported yet — bail silently
+
+            var strip = new GameObject(name);
+            strip.transform.SetParent(parent, worldPositionStays: false);
+            strip.transform.position = new Vector3(centerX, yOffset, 0f);
+            var startX = -(count * tileWidth) * 0.5f + tileWidth * 0.5f;
+
+            for (var i = 0; i < count; i++)
+            {
+                var tile = new GameObject($"Tile_{i}");
+                tile.transform.SetParent(strip.transform, worldPositionStays: false);
+                tile.transform.localPosition = new Vector3(startX + i * tileWidth, 0f, 0f);
+                tile.transform.localScale = new Vector3(tileWidth, tileHeight, 1f);
+                var tsr = tile.AddComponent<SpriteRenderer>();
+                tsr.sprite = sprite;
+                tsr.sortingOrder = sortingOrder;
+                tsr.color = tint;
+            }
+
+            var layer = strip.AddComponent<ParallaxLayer>();
+            SetPrivateField(layer, "parallaxFactor", parallaxFactor);
         }
 
         private static void CreateLootSpawner()
