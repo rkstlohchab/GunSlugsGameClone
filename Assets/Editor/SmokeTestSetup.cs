@@ -1,4 +1,5 @@
 using System.IO;
+using GunSlugsClone.Core;
 using GunSlugsClone.Player;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -9,30 +10,35 @@ using UnityEngine.SceneManagement;
 namespace GunSlugsClone.EditorTools
 {
     // One-click smoke test: GunSlugs > Build Smoke Test Scene
-    // Creates a new SmokeTest scene with camera, ground, and a fully-wired Player
-    // (Rigidbody2D, BoxCollider2D, PlayerController + Health + WeaponHolder, GroundCheck child,
-    // PlayerInput component bound to InputSystem_Actions.inputactions in SendMessages mode).
-    // Generates a tiny white sprite asset on first run so we don't depend on the 2D Sprite package.
+    // Builds a fresh SmokeTest scene with a camera, ground, and a fully-wired Player
+    // (Rigidbody2D + collider + PlayerController + Health + WeaponHolder + GroundCheck child + PlayerInput).
+    // Visual squares are produced by the ProceduralSquare runtime component — no PNG/Sprite asset
+    // import is required, which avoids Unity's flaky first-time texture import timing.
     public static class SmokeTestSetup
     {
         private const string ScenePath        = "Assets/Scenes/SmokeTest.unity";
-        private const string ArtFolder        = "Assets/Art";
-        private const string SpritePath       = "Assets/Art/white_pixel.png";
         private const string InputActionsPath = "Assets/Settings/InputSystem_Actions.inputactions";
 
         [MenuItem("GunSlugs/Build Smoke Test Scene")]
         public static void Build()
         {
+            if (EditorApplication.isPlaying || EditorApplication.isPlayingOrWillChangePlaymode)
+            {
+                EditorUtility.DisplayDialog(
+                    "Stop Play Mode First",
+                    "Play Mode is active. Click the ▶ button at the top of the Editor to stop it, then run this menu again.",
+                    "OK");
+                return;
+            }
+
             EnsureFolder("Assets/Scenes");
-            EnsureFolder(ArtFolder);
-            var sprite = EnsureWhiteSprite();
 
             var scene = OpenOrCreateScene();
             ClearScene(scene);
 
             CreateCamera();
-            CreateGround(sprite);
-            var player = CreatePlayer(sprite);
+            CreateGround();
+            var player = CreatePlayer();
             WirePlayerInput(player);
 
             EditorSceneManager.MarkSceneDirty(scene);
@@ -55,45 +61,6 @@ namespace GunSlugsClone.EditorTools
                 AssetDatabase.CreateFolder("Assets", leaf);
             else
                 AssetDatabase.CreateFolder(parent, leaf);
-        }
-
-        private static Sprite EnsureWhiteSprite()
-        {
-            // Always (re)write + (re)import. Cheap, and avoids the case where the
-            // PNG exists on disk but its sprite sub-asset never finished importing.
-            if (!File.Exists(SpritePath))
-            {
-                var tex = new Texture2D(4, 4, TextureFormat.RGBA32, false);
-                var pixels = new Color32[16];
-                for (var i = 0; i < pixels.Length; i++) pixels[i] = new Color32(255, 255, 255, 255);
-                tex.SetPixels32(pixels);
-                tex.Apply();
-                File.WriteAllBytes(SpritePath, tex.EncodeToPNG());
-                Object.DestroyImmediate(tex);
-                AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
-            }
-
-            var importer = AssetImporter.GetAtPath(SpritePath) as TextureImporter;
-            if (importer != null && importer.textureType != TextureImporterType.Sprite)
-            {
-                importer.textureType = TextureImporterType.Sprite;
-                importer.spriteImportMode = SpriteImportMode.Single;
-                importer.spritePixelsPerUnit = 4f; // 4x4 sprite = 1 world unit
-                importer.filterMode = FilterMode.Point;
-                importer.mipmapEnabled = false;
-                importer.SaveAndReimport();
-                AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
-            }
-
-            // Sub-asset may take a frame to materialise; scan all assets at the path.
-            var sprite = AssetDatabase.LoadAssetAtPath<Sprite>(SpritePath);
-            if (sprite != null) return sprite;
-            foreach (var obj in AssetDatabase.LoadAllAssetsAtPath(SpritePath))
-                if (obj is Sprite s) return s;
-
-            Debug.LogWarning("[SmokeTestSetup] White sprite not yet imported. Renderers will be invisible " +
-                             "but collision will still work. Run 'Build Smoke Test Scene' once more to bind it.");
-            return null;
         }
 
         private static UnityEngine.SceneManagement.Scene OpenOrCreateScene()
@@ -124,28 +91,27 @@ namespace GunSlugsClone.EditorTools
             go.AddComponent<AudioListener>();
         }
 
-        private static void CreateGround(Sprite sprite)
+        private static void CreateGround()
         {
             var go = new GameObject("Ground");
             go.transform.position = new Vector3(0, -3, 0);
             go.transform.localScale = new Vector3(20, 1, 1);
-            var sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite = sprite;
-            sr.color = new Color(0.42f, 0.70f, 0.34f);
-            // Explicit size so collision works even if the sprite is still importing.
+            go.AddComponent<SpriteRenderer>();
+            var ps = go.AddComponent<ProceduralSquare>();
+            SetSerializedColor(ps, new Color(0.42f, 0.70f, 0.34f));
             var col = go.AddComponent<BoxCollider2D>();
             col.size = new Vector2(1f, 1f);
         }
 
-        private static GameObject CreatePlayer(Sprite sprite)
+        private static GameObject CreatePlayer()
         {
             var go = new GameObject("Player");
             go.transform.position = new Vector3(0, 0, 0);
 
             var sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite = sprite;
-            sr.color = new Color(0.95f, 0.62f, 0.20f);
             sr.sortingOrder = 1;
+            var ps = go.AddComponent<ProceduralSquare>();
+            SetSerializedColor(ps, new Color(0.95f, 0.62f, 0.20f));
 
             var rb = go.AddComponent<Rigidbody2D>();
             rb.gravityScale = 3.5f;
@@ -154,7 +120,8 @@ namespace GunSlugsClone.EditorTools
             rb.interpolation = RigidbodyInterpolation2D.Interpolate;
 
             var col = go.AddComponent<BoxCollider2D>();
-            col.size = new Vector2(1f, 1f); // explicit, sprite-independent
+            col.size = new Vector2(1f, 1f);
+
             go.AddComponent<PlayerHealth>();
             go.AddComponent<WeaponHolder>();
             var ctrl = go.AddComponent<PlayerController>();
@@ -163,7 +130,6 @@ namespace GunSlugsClone.EditorTools
             groundCheck.transform.SetParent(go.transform, worldPositionStays: false);
             groundCheck.transform.localPosition = new Vector3(0, -0.5f, 0);
 
-            // Wire the [SerializeField] groundCheck on PlayerController without reflection
             var so = new SerializedObject(ctrl);
             var prop = so.FindProperty("groundCheck");
             if (prop != null)
@@ -188,6 +154,17 @@ namespace GunSlugsClone.EditorTools
             pi.actions = actions;
             pi.defaultActionMap = "Gameplay";
             pi.notificationBehavior = PlayerNotifications.SendMessages;
+        }
+
+        private static void SetSerializedColor(ProceduralSquare ps, Color color)
+        {
+            var so = new SerializedObject(ps);
+            var prop = so.FindProperty("color");
+            if (prop != null)
+            {
+                prop.colorValue = color;
+                so.ApplyModifiedPropertiesWithoutUndo();
+            }
         }
     }
 }
