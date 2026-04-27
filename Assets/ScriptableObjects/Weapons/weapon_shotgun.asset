@@ -10,25 +10,25 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 560a84815fd254a4fb93dc4f5ed43342, type: 3}
-  m_Name: weapon_pistol
+  m_Name: weapon_shotgun
   m_EditorClassIdentifier: GunSlugsClone.Weapons::GunSlugsClone.Weapons.WeaponData
-  Id: weapon_pistol
-  DisplayName: Pistol
+  Id: weapon_shotgun
+  DisplayName: Shotgun
   Icon: {fileID: 0}
   Mode: 0
-  Damage: 10
-  FireRate: 4
-  ProjectilesPerShot: 1
-  SpreadDegrees: 1
-  ProjectileSpeed: 18
-  ProjectileLifetime: 1.5
-  Knockback: 1
-  Recoil: 0
+  Damage: 6
+  FireRate: 1.5
+  ProjectilesPerShot: 6
+  SpreadDegrees: 25
+  ProjectileSpeed: 16
+  ProjectileLifetime: 1.2
+  Knockback: 2
+  Recoil: 0.1
   Infinite: 1
-  MagazineSize: 12
-  ReloadSeconds: 1
-  BurstCount: 1
-  BurstInterval: 0
+  MagazineSize: 6
+  ReloadSeconds: 1.6
+  BurstCount: 3
+  BurstInterval: 0.05
   ProjectilePrefab: {fileID: 6971150793313669213, guid: b1bb4dbf8658940b2959f09c1eededb4, type: 3}
   MuzzleFlashPrefab: {fileID: 9096464717511921253, guid: cda8a21298f12430f9a7910fccdfaf17, type: 3}
   FireSfx: {fileID: 0}

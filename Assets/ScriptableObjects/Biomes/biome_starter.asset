@@ -17,13 +17,13 @@ MonoBehaviour:
   RoomsPerRun: 5
   TreasureRoomChance: 0.2
   RoomTemplates:
-  - {fileID: 5153445635878571345, guid: ab6dacaee6fee47e3810cdd464aa1664, type: 3}
-  - {fileID: 2289470396414989112, guid: ea00afd8a1fe9441e9015c44d8043d4a, type: 3}
-  - {fileID: 2092097128491118579, guid: 1c39559fa1e9f46aba1b8fadcc3b4530, type: 3}
+  - {fileID: 3492186355520972322, guid: ab6dacaee6fee47e3810cdd464aa1664, type: 3}
+  - {fileID: 9129999241761054822, guid: ea00afd8a1fe9441e9015c44d8043d4a, type: 3}
+  - {fileID: 5278971781102483577, guid: 1c39559fa1e9f46aba1b8fadcc3b4530, type: 3}
   EnemyPool:
   - {fileID: 11400000, guid: eafcb3024d91945418a85cd056ee7506, type: 2}
   - {fileID: 11400000, guid: a926c9997f44e47869fc81ddcdeb6d98, type: 2}
   EnemyWeights: []
-  BossPrefab: {fileID: 5725431020653025399, guid: 38666e3f3e5e94d6d951f326104d058f, type: 3}
+  BossPrefab: {fileID: 1721293605454540942, guid: 38666e3f3e5e94d6d951f326104d058f, type: 3}
   AmbientTint: {r: 1, g: 1, b: 1, a: 1}
   Music: {fileID: 0}

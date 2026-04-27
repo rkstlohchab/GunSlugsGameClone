@@ -25,11 +25,13 @@ namespace GunSlugsClone.UI
 
         private void Refresh()
         {
-            // Show on touch devices, hide otherwise. Editor / standalone builds
-            // typically have a Mouse + Keyboard but no Touchscreen, so the
-            // overlay disappears unless the user is testing on-device.
-            var hasTouch = Touchscreen.current != null;
-            var visible = hasTouch && Gamepad.current == null;
+            // Show only on real mobile platforms (iOS/Android builds). In the
+            // Editor and on desktop builds Application.isMobilePlatform is
+            // false, so the overlay stays hidden even when Unity surfaces a
+            // pseudo-Touchscreen device (Unity Remote, simulator, etc.).
+            var visible = Application.isMobilePlatform
+                          && Touchscreen.current != null
+                          && Gamepad.current == null;
             _group.alpha = visible ? 1f : 0f;
             _group.interactable = visible;
             _group.blocksRaycasts = visible;

@@ -10,22 +10,22 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b0f706c80733e4488ab3fc7103d85236, type: 3}
-  m_Name: enemy_grunt
+  m_Name: enemy_flyer
   m_EditorClassIdentifier: GunSlugsClone.Enemies::GunSlugsClone.Enemies.EnemyData
-  Id: enemy_grunt
-  DisplayName: Grunt
-  Archetype: 0
-  MaxHealth: 20
-  MoveSpeed: 2.5
-  AggroRange: 8
-  AttackRange: 1.2
-  AttackCooldown: 1
+  Id: enemy_flyer
+  DisplayName: Flyer
+  Archetype: 2
+  MaxHealth: 8
+  MoveSpeed: 3.5
+  AggroRange: 14
+  AttackRange: 1
+  AttackCooldown: 0.8
   ContactDamage: 1
-  ScoreOnKill: 10
+  ScoreOnKill: 25
   HealthDropChance: 0.05
   AmmoDropChance: 0.15
   CurrencyDropChance: 0.5
   CurrencyDropAmount: 1
-  Prefab: {fileID: 7053491993728683823, guid: 6034d2fabbee840749bdd893b0ad7605, type: 3}
+  Prefab: {fileID: 6792994454764011311, guid: f25e8614decf2475787eecc9d0dd707e, type: 3}
   HitSfx: {fileID: 0}
   DeathSfx: {fileID: 0}

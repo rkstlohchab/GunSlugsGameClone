@@ -1072,6 +1072,7 @@ namespace GunSlugsClone.EditorTools
                     settings.mipmapEnabled = false;
                     settings.wrapMode = TextureWrapMode.Clamp;
                     settings.spriteMeshType = SpriteMeshType.FullRect;
+                    settings.npotScale = TextureImporterNPOTScale.None;
                     importer.SetTextureSettings(settings);
                     importer.SaveAndReimport();
                 }
@@ -1713,15 +1714,14 @@ namespace GunSlugsClone.EditorTools
             // Auto-hide on desktop with a gamepad attached, show on mobile / touch.
             canvasGo.AddComponent<TouchControlsAutoVisibility>();
 
-            // Smaller / less invasive sizes — phone screens are usually
-            // 1080-2400 px, so 140 px joystick and 100 px buttons are
-            // reasonable thumb-reach without filling half the screen.
+            // Smaller still. Sized in 1920x1080 reference space:
+            // ~5% of screen width per control, sit in the corners.
             CreateOnScreenStick(canvasGo.transform,
                 anchorMin: new Vector2(0f, 0f),
                 anchorMax: new Vector2(0f, 0f),
                 pivot: new Vector2(0f, 0f),
-                anchoredPos: new Vector2(60f, 60f),
-                size: new Vector2(140f, 140f),
+                anchoredPos: new Vector2(40f, 40f),
+                size: new Vector2(100f, 100f),
                 controlPath: "<Gamepad>/leftStick");
 
             CreateOnScreenButton(canvasGo.transform,
@@ -1729,8 +1729,8 @@ namespace GunSlugsClone.EditorTools
                 anchorMin: new Vector2(1f, 0f),
                 anchorMax: new Vector2(1f, 0f),
                 pivot: new Vector2(1f, 0f),
-                anchoredPos: new Vector2(-160f, 70f),
-                size: new Vector2(100f, 100f),
+                anchoredPos: new Vector2(-110f, 50f),
+                size: new Vector2(70f, 70f),
                 controlPath: "<Keyboard>/space");
 
             CreateOnScreenButton(canvasGo.transform,
@@ -1738,8 +1738,8 @@ namespace GunSlugsClone.EditorTools
                 anchorMin: new Vector2(1f, 0f),
                 anchorMax: new Vector2(1f, 0f),
                 pivot: new Vector2(1f, 0f),
-                anchoredPos: new Vector2(-40f, 130f),
-                size: new Vector2(120f, 120f),
+                anchoredPos: new Vector2(-30f, 90f),
+                size: new Vector2(80f, 80f),
                 controlPath: "<Keyboard>/leftCtrl");
         }
 
