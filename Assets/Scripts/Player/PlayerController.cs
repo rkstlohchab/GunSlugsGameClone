@@ -69,7 +69,11 @@ namespace GunSlugsClone.Player
             _jumpHeld = v.isPressed;
         }
 
-        public void OnFire(InputValue v) => _weapon.SetTriggerHeld(v.isPressed);
+        public void OnFire(InputValue v)
+        {
+            Debug.Log($"[PlayerController] OnFire pressed={v.isPressed}");
+            _weapon.SetTriggerHeld(v.isPressed);
+        }
 
         public void OnDash(InputValue v)
         {

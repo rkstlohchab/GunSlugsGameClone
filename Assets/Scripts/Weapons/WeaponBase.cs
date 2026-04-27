@@ -56,6 +56,7 @@ namespace GunSlugsClone.Weapons
             if (_cooldown > 0f) return false;
             if (!Data.Infinite && Ammo <= 0) { BeginReload(); return false; }
 
+            Debug.Log($"[WeaponBase] Firing {Data.DisplayName} dir={_aim} origin={_origin} prefab={(Data.ProjectilePrefab != null ? Data.ProjectilePrefab.name : "NULL")}");
             Fire();
             _cooldown = Data.SecondsBetweenShots / Mathf.Max(0.01f, _fireRateMul);
             if (!Data.Infinite) Ammo--;

@@ -23,8 +23,13 @@ namespace GunSlugsClone.Player
 
         private void Awake()
         {
+            Debug.Log($"[WeaponHolder] Awake on '{name}': startingLoadout count={startingLoadout?.Count ?? -1}, muzzle={(muzzle != null ? muzzle.name : "NULL")}");
             foreach (var data in startingLoadout)
+            {
+                Debug.Log($"[WeaponHolder]   loadout entry: {(data != null ? data.DisplayName + " (" + data.Id + "), prefab=" + (data.ProjectilePrefab != null ? data.ProjectilePrefab.name : "NULL") : "NULL")}");
                 if (data != null) Equip(data);
+            }
+            Debug.Log($"[WeaponHolder] After Awake: Active={(Active != null ? Active.Data.Id : "NULL")}");
         }
 
         private void Update()
