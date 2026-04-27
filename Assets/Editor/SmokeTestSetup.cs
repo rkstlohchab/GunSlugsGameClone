@@ -52,8 +52,11 @@ namespace GunSlugsClone.EditorTools
             CreateGround();
             var player = CreatePlayer();
             WirePlayerInput(player);
-            SpawnEnemy(player);
+            SpawnEnemy(player, new Vector3(5f, 0f, 0f));
+            SpawnEnemy(player, new Vector3(8f, 0f, 0f));
+            SpawnEnemy(player, new Vector3(-7f, 0f, 0f));
             AttachCameraFollow(camera, player.transform);
+            CreateGameOverScreen();
 
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene, ScenePath);
@@ -388,7 +391,7 @@ namespace GunSlugsClone.EditorTools
             }
         }
 
-        private static void SpawnEnemy(GameObject player)
+        private static void SpawnEnemy(GameObject player, Vector3 position)
         {
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(EnemyPrefabPath);
             if (prefab == null)
@@ -397,9 +400,15 @@ namespace GunSlugsClone.EditorTools
                 return;
             }
             var enemy = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
-            enemy.transform.position = new Vector3(5, 0, 0);
+            enemy.transform.position = position;
             if (enemy.TryGetComponent<EnemyBase>(out var eb))
                 eb.SetTarget(player.transform);
+        }
+
+        private static void CreateGameOverScreen()
+        {
+            var go = new GameObject("GameOverScreen");
+            go.AddComponent<GameOverScreen>();
         }
 
         private static void WirePlayerInput(GameObject player)

@@ -16,6 +16,7 @@ namespace GunSlugsClone.Player
         private readonly List<WeaponBase> _weapons = new();
         private int _activeIndex;
         private bool _triggerHeld;
+        private bool _triggerJustPressed;
         private Vector2 _aim = Vector2.right;
         private float _fireRateMul = 1f;
         private float _damageMul = 1f;
@@ -40,10 +41,21 @@ namespace GunSlugsClone.Player
             var origin = transform.position + (Vector3)(dir * muzzleOffset);
             if (muzzle != null) muzzle.position = origin; // keep the Transform in sync for visuals
             Active.UpdateAim(origin, dir);
-            if (_triggerHeld) Active.TryFire();
+
+            // SemiAuto: one shot per fresh trigger press. Auto / everything else: fire while held.
+            // Burst / Charged / Beam / Melee specifics are M3 follow-up.
+            var fire = Active.Data.Mode == FireMode.SemiAuto
+                ? _triggerJustPressed
+                : _triggerHeld;
+            if (fire) Active.TryFire();
+            _triggerJustPressed = false;
         }
 
-        public void SetTriggerHeld(bool held) => _triggerHeld = held;
+        public void SetTriggerHeld(bool held)
+        {
+            if (held && !_triggerHeld) _triggerJustPressed = true;
+            _triggerHeld = held;
+        }
         public void SetAimDirection(Vector2 dir) => _aim = dir;
 
         public void ApplyMultipliers(float fireRateMul, float damageMul)
