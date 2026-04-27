@@ -68,11 +68,24 @@ namespace GunSlugsClone.EditorTools
             ClearScene(scene);
 
             var camera = CreateCamera();
-            var roomGo = InstantiateRoom(Vector3.zero);
+
+            // Three rooms strung along X. Center room is the spawn room; the
+            // door gaps in the side walls let the player walk between them.
+            const float roomWidth = 30f;
+            var roomMiddle = InstantiateRoom(Vector3.zero);
+            var roomLeft   = InstantiateRoom(new Vector3(-roomWidth, 0f, 0f));
+            var roomRight  = InstantiateRoom(new Vector3( roomWidth, 0f, 0f));
+
             var player = CreatePlayer();
-            PositionPlayerAtRoomSpawn(player, roomGo);
+            PositionPlayerAtRoomSpawn(player, roomMiddle);
             WirePlayerInput(player);
-            SpawnEnemiesAtRoomAnchors(player, roomGo);
+
+            // Two enemies per room — six total enemies across the level
+            // without making any single room a meat-grinder.
+            SpawnEnemiesAtRoomAnchors(player, roomMiddle, maxPerRoom: 2);
+            SpawnEnemiesAtRoomAnchors(player, roomLeft,   maxPerRoom: 2);
+            SpawnEnemiesAtRoomAnchors(player, roomRight,  maxPerRoom: 2);
+
             AttachCameraFollow(camera, player.transform);
             CreateGameOverScreen();
 
@@ -246,13 +259,16 @@ namespace GunSlugsClone.EditorTools
             player.transform.position = rt.PlayerSpawn.position;
         }
 
-        private static void SpawnEnemiesAtRoomAnchors(GameObject player, GameObject roomGo)
+        private static void SpawnEnemiesAtRoomAnchors(GameObject player, GameObject roomGo, int maxPerRoom = int.MaxValue)
         {
             if (roomGo == null || !roomGo.TryGetComponent<RoomTemplate>(out var rt)) return;
+            var spawned = 0;
             foreach (var anchor in rt.EnemySpawns)
             {
                 if (anchor == null) continue;
+                if (spawned >= maxPerRoom) break;
                 SpawnEnemy(player, anchor.position);
+                spawned++;
             }
         }
 
