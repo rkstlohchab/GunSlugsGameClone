@@ -29,6 +29,7 @@ namespace GunSlugsClone.EditorTools
         private const string EnemyDataPath   = "Assets/ScriptableObjects/Enemies/enemy_grunt.asset";
         private const string EnemyPrefabPath  = "Assets/Prefabs/Enemy_Grunt.prefab";
         private const string RoomPrefabPath   = "Assets/Prefabs/RoomTemplate_Standard.prefab";
+        private const string HealthPickupPath = "Assets/Prefabs/HealthPickup.prefab";
 
         private const string KenneySource = "/Users/raksithlochabb/Downloads/kenneypack/kenney_pixel-platformer";
         private const string KenneyDest   = "Assets/Art/Kenney";
@@ -42,7 +43,8 @@ namespace GunSlugsClone.EditorTools
             ("Tiles/Characters/tile_0000.png", "character_player.png", 24),
             ("Tiles/Characters/tile_0024.png", "character_enemy.png",  24),
             ("Tiles/tile_0006.png",            "tile_floor.png",       18),
-            ("Tiles/tile_0001.png",            "tile_wall.png",        18),
+            ("Tiles/tile_0044.png",            "tile_heart.png",       18),
+            ("Tiles/Backgrounds/tile_0000.png","tile_bg.png",           18),
         };
 
         [MenuItem("GunSlugs/Build Smoke Test Scene")]
@@ -63,11 +65,13 @@ namespace GunSlugsClone.EditorTools
             EnsurePistolAsset();
             EnsureEnemyAssets();
             EnsureRoomTemplatePrefab();
+            EnsureHealthPickupPrefab();
 
             var scene = OpenOrCreateScene();
             ClearScene(scene);
 
             var camera = CreateCamera();
+            CreateBackground();
 
             // Three rooms strung along X. Center room is the spawn room; the
             // door gaps in the side walls let the player walk between them.
@@ -86,6 +90,7 @@ namespace GunSlugsClone.EditorTools
             SpawnEnemiesAtRoomAnchors(player, roomLeft,   maxPerRoom: 2);
             SpawnEnemiesAtRoomAnchors(player, roomRight,  maxPerRoom: 2);
 
+            CreateLootSpawner();
             AttachCameraFollow(camera, player.transform);
             CreateGameOverScreen();
 
@@ -168,8 +173,12 @@ namespace GunSlugsClone.EditorTools
                 const float halfHeight = 7f;
                 const float doorHeight = 3f; // door gap height in world units
 
+                // Floor and walls share the same tile to guarantee no decoration
+                // tiles end up on the geometry. Easy to point walls at a different
+                // sprite later when we have a confirmed solid-block tile that
+                // doesn't render as hearts/stars.
                 var floorSprite = LoadKenneySprite("tile_floor.png");
-                var wallSprite  = LoadKenneySprite("tile_wall.png");
+                var wallSprite  = floorSprite;
 
                 var room = new GameObject("RoomTemplate_Standard");
                 var rt = room.AddComponent<RoomTemplate>();
@@ -678,6 +687,85 @@ namespace GunSlugsClone.EditorTools
         {
             var go = new GameObject("GameOverScreen");
             go.AddComponent<GameOverScreen>();
+        }
+
+        private static void EnsureHealthPickupPrefab()
+        {
+            try
+            {
+                EnsureFolder("Assets/Prefabs");
+                if (AssetDatabase.LoadMainAssetAtPath(HealthPickupPath) != null)
+                    AssetDatabase.DeleteAsset(HealthPickupPath);
+
+                var go = new GameObject("HealthPickup");
+                go.transform.localScale = new Vector3(0.6f, 0.6f, 1f);
+
+                var sr = go.AddComponent<SpriteRenderer>();
+                sr.sortingOrder = 2;
+                var heart = LoadKenneySprite("tile_heart.png");
+                if (heart != null)
+                {
+                    sr.sprite = heart;
+                }
+                else
+                {
+                    var ps = go.AddComponent<ProceduralSquare>();
+                    SetSerializedColor(ps, new Color(1f, 0.25f, 0.45f));
+                }
+
+                var rb = go.AddComponent<Rigidbody2D>();
+                rb.gravityScale = 2.5f;
+                rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+                rb.interpolation = RigidbodyInterpolation2D.Interpolate;
+                rb.freezeRotation = true;
+
+                var col = go.AddComponent<CircleCollider2D>();
+                col.isTrigger = true;
+                col.radius = 0.5f;
+
+                go.AddComponent<HealthPickup>();
+
+                PrefabUtility.SaveAsPrefabAsset(go, HealthPickupPath);
+                Object.DestroyImmediate(go);
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[SmokeTestSetup] EnsureHealthPickupPrefab threw: {e}");
+            }
+        }
+
+        private static void CreateBackground()
+        {
+            var go = new GameObject("Background");
+            go.transform.position = new Vector3(0f, 0f, 0f);
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sortingOrder = -50;
+            var bg = LoadKenneySprite("tile_bg.png");
+            if (bg != null)
+            {
+                sr.sprite = bg;
+                sr.drawMode = SpriteDrawMode.Tiled;
+                sr.tileMode = SpriteTileMode.Continuous;
+                // 3 rooms × 30 wide + 30 of margin each side = 150 wide; 30 tall
+                sr.size = new Vector2(150f, 30f);
+            }
+            else
+            {
+                go.transform.localScale = new Vector3(150f, 30f, 1f);
+                var ps = go.AddComponent<ProceduralSquare>();
+                SetSerializedColor(ps, new Color(0.10f, 0.16f, 0.24f));
+            }
+        }
+
+        private static void CreateLootSpawner()
+        {
+            var go = new GameObject("LootSpawner");
+            var spawner = go.AddComponent<LootSpawner>();
+            var pickupPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(HealthPickupPath);
+            if (pickupPrefab != null)
+                SetPrivateField(spawner, "healthPickupPrefab", pickupPrefab);
+            SetPrivateField(spawner, "healthDropChance", 0.5f);
+            SetPrivateField(spawner, "popupVelocity", new Vector2(2.5f, 5f));
         }
 
         private static void WirePlayerInput(GameObject player)

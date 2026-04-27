@@ -9,6 +9,7 @@ namespace GunSlugsClone.Enemies
     {
         [SerializeField] protected EnemyData data;
         [SerializeField] protected SpriteRenderer flashRenderer;
+        [SerializeField] protected Color flashColor = new Color(1f, 0.35f, 0.35f, 1f);
 
         protected int Health;
         protected Rigidbody2D Rb;
@@ -52,7 +53,7 @@ namespace GunSlugsClone.Enemies
             if (data != null)
             {
                 if (data.DeathSfx != null) AudioManager.Instance?.PlaySfx(data.DeathSfx, transform.position);
-                EventBus.Publish(new EnemyKilledEvent(data.Id, data.ScoreOnKill));
+                EventBus.Publish(new EnemyKilledEvent(data.Id, data.ScoreOnKill, transform.position));
                 DropLoot();
             }
             Destroy(gameObject);
@@ -67,7 +68,7 @@ namespace GunSlugsClone.Enemies
         private System.Collections.IEnumerator HitFlash()
         {
             var orig = flashRenderer.color;
-            flashRenderer.color = Color.white;
+            flashRenderer.color = flashColor;
             yield return new WaitForSeconds(0.05f);
             flashRenderer.color = orig;
         }

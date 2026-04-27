@@ -36,7 +36,7 @@ namespace GunSlugsClone.Core
     public readonly struct PlayerSpawnedEvent { public readonly int PlayerIndex; public PlayerSpawnedEvent(int i) { PlayerIndex = i; } }
     public readonly struct PlayerDamagedEvent { public readonly int PlayerIndex; public readonly int Damage; public readonly int RemainingHealth; public PlayerDamagedEvent(int i, int d, int r) { PlayerIndex = i; Damage = d; RemainingHealth = r; } }
     public readonly struct PlayerDiedEvent { public readonly int PlayerIndex; public PlayerDiedEvent(int i) { PlayerIndex = i; } }
-    public readonly struct EnemyKilledEvent { public readonly string EnemyId; public readonly int ScoreReward; public EnemyKilledEvent(string id, int r) { EnemyId = id; ScoreReward = r; } }
+    public readonly struct EnemyKilledEvent { public readonly string EnemyId; public readonly int ScoreReward; public readonly UnityEngine.Vector3 Position; public EnemyKilledEvent(string id, int r, UnityEngine.Vector3 p) { EnemyId = id; ScoreReward = r; Position = p; } }
     public readonly struct WeaponSwappedEvent { public readonly int PlayerIndex; public readonly string WeaponId; public WeaponSwappedEvent(int i, string id) { PlayerIndex = i; WeaponId = id; } }
     public readonly struct RoomEnteredEvent { public readonly int RoomIndex; public readonly bool IsBossRoom; public RoomEnteredEvent(int idx, bool boss) { RoomIndex = idx; IsBossRoom = boss; } }
     public readonly struct RoomClearedEvent { public readonly int RoomIndex; public RoomClearedEvent(int i) { RoomIndex = i; } }
