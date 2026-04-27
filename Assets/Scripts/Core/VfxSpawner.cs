@@ -30,7 +30,11 @@ namespace GunSlugsClone.Core
         private void OnEnemyKilled(EnemyKilledEvent e)
         {
             if (deathBurstPrefab == null) return;
-            Instantiate(deathBurstPrefab, e.Position, Quaternion.identity);
+            var go = Instantiate(deathBurstPrefab, e.Position, Quaternion.identity);
+            // Belt-and-suspenders: even with main.playOnAwake = true on the
+            // prefab, Instantiate sometimes lands in a frame where the
+            // ParticleSystem hasn't had its Awake fire — explicitly Play.
+            if (go.TryGetComponent<ParticleSystem>(out var ps)) ps.Play();
         }
     }
 }

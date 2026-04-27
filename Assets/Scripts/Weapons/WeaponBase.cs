@@ -71,7 +71,10 @@ namespace GunSlugsClone.Weapons
                 SpawnProjectile(dir);
             }
             if (Data.MuzzleFlashPrefab != null)
-                Instantiate(Data.MuzzleFlashPrefab, _origin, Quaternion.LookRotation(Vector3.forward, _aim));
+            {
+                var flash = Instantiate(Data.MuzzleFlashPrefab, _origin, Quaternion.LookRotation(Vector3.forward, _aim));
+                if (flash.TryGetComponent<ParticleSystem>(out var ps)) ps.Play();
+            }
             if (Data.FireSfx != null)
                 AudioManager.Instance?.PlaySfx(Data.FireSfx, _origin);
         }

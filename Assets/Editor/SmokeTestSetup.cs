@@ -46,6 +46,7 @@ namespace GunSlugsClone.EditorTools
             ("Tiles/Characters/tile_0024.png", "character_enemy.png",  24),
             ("Tiles/tile_0006.png",            "tile_floor.png",       18),
             ("Tiles/tile_0044.png",            "tile_heart.png",       18),
+            ("Tiles/tile_0151.png",            "tile_bullet.png",      18),
             ("Tiles/Backgrounds/tile_0000.png","tile_bg.png",           18),
         };
 
@@ -507,9 +508,19 @@ namespace GunSlugsClone.EditorTools
             var go = new GameObject("Bullet");
             go.transform.localScale = new Vector3(0.25f, 0.25f, 1f);
 
-            go.AddComponent<SpriteRenderer>();
-            var ps = go.AddComponent<ProceduralSquare>();
-            SetSerializedColor(ps, new Color(1f, 0.85f, 0.30f));
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sortingOrder = 3;
+            var bulletSprite = LoadKenneySprite("tile_bullet.png");
+            if (bulletSprite != null)
+            {
+                sr.sprite = bulletSprite;
+                sr.color = new Color(1f, 0.95f, 0.45f); // warm yellow tint over whatever the source tile is
+            }
+            else
+            {
+                var ps = go.AddComponent<ProceduralSquare>();
+                SetSerializedColor(ps, new Color(1f, 0.85f, 0.30f));
+            }
 
             var rb = go.AddComponent<Rigidbody2D>();
             rb.gravityScale = 0f;
@@ -710,14 +721,14 @@ namespace GunSlugsClone.EditorTools
                 var ps = go.AddComponent<ParticleSystem>();
                 ConfigureParticleSystem(
                     ps,
-                    burstCount: 16,
-                    color: new Color(1f, 0.4f, 0.4f, 1f),
-                    startSpeed: 5f,
-                    lifetime: 0.55f,
-                    startSize: 0.18f,
-                    gravity: 1.5f,
+                    burstCount: 18,
+                    color: new Color(1f, 0.35f, 0.35f, 1f),
+                    startSpeed: 5.5f,
+                    lifetime: 0.65f,
+                    startSize: 0.3f,
+                    gravity: 1.4f,
                     coneAngle: 360f,
-                    sortingOrder: 8);
+                    sortingOrder: 10);
 
                 PrefabUtility.SaveAsPrefabAsset(go, DeathBurstPath);
                 Object.DestroyImmediate(go);
@@ -740,14 +751,14 @@ namespace GunSlugsClone.EditorTools
                 var ps = go.AddComponent<ParticleSystem>();
                 ConfigureParticleSystem(
                     ps,
-                    burstCount: 6,
-                    color: new Color(1f, 0.92f, 0.45f, 1f),
-                    startSpeed: 3f,
-                    lifetime: 0.12f,
-                    startSize: 0.1f,
+                    burstCount: 10,
+                    color: new Color(1f, 0.92f, 0.40f, 1f),
+                    startSpeed: 4f,
+                    lifetime: 0.18f,
+                    startSize: 0.22f,
                     gravity: 0f,
-                    coneAngle: 25f,
-                    sortingOrder: 8);
+                    coneAngle: 30f,
+                    sortingOrder: 10);
 
                 PrefabUtility.SaveAsPrefabAsset(go, MuzzleFlashPath);
                 Object.DestroyImmediate(go);
@@ -771,7 +782,7 @@ namespace GunSlugsClone.EditorTools
             main.startSize = startSize;
             main.startColor = color;
             main.gravityModifier = gravity;
-            main.duration = 0.05f;
+            main.duration = 0.1f;
             main.loop = false;
             main.playOnAwake = true;
             main.stopAction = ParticleSystemStopAction.Destroy;
@@ -783,7 +794,20 @@ namespace GunSlugsClone.EditorTools
             shape.radius = 0.05f;
 
             var renderer = ps.GetComponent<ParticleSystemRenderer>();
-            if (renderer != null) renderer.sortingOrder = sortingOrder;
+            if (renderer != null)
+            {
+                renderer.sortingOrder = sortingOrder;
+                // The default ParticleSystem material isn't assigned in URP 2D —
+                // particles end up rendering as missing/magenta and look invisible
+                // depending on the URP renderer feature set. Sprites/Default is
+                // the safe cross-pipeline default for unlit colored particles.
+                var shader = Shader.Find("Sprites/Default");
+                if (shader != null)
+                {
+                    var mat = new Material(shader) { name = $"PS_{ps.gameObject.name}_Mat" };
+                    renderer.sharedMaterial = mat;
+                }
+            }
         }
 
         private static void CreateVfxSpawner()
