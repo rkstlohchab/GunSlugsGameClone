@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using GunSlugsClone.Core;
 using GunSlugsClone.Player;
 using GunSlugsClone.Weapons;
@@ -141,27 +143,33 @@ namespace GunSlugsClone.EditorTools
             muzzle.transform.SetParent(go.transform, worldPositionStays: false);
             muzzle.transform.localPosition = new Vector3(0.8f, 0.05f, 0);
 
-            var ctrlSo = new SerializedObject(ctrl);
-            var groundProp = ctrlSo.FindProperty("groundCheck");
-            if (groundProp != null)
-            {
-                groundProp.objectReferenceValue = groundCheck.transform;
-                ctrlSo.ApplyModifiedPropertiesWithoutUndo();
-            }
-            else Debug.LogWarning("[SmokeTestSetup] Could not find groundCheck SerializedProperty on PlayerController.");
-
-            var whSo = new SerializedObject(weaponHolder);
-            var muzzleProp = whSo.FindProperty("muzzle");
-            if (muzzleProp != null) muzzleProp.objectReferenceValue = muzzle.transform;
-            var loadout = whSo.FindProperty("startingLoadout");
-            if (loadout != null && pistol != null)
-            {
-                loadout.arraySize = 1;
-                loadout.GetArrayElementAtIndex(0).objectReferenceValue = pistol;
-            }
-            whSo.ApplyModifiedPropertiesWithoutUndo();
+            // SerializedObject array operations on freshly-AddComponent'd components are
+            // unreliable for List<T> fields (the muzzle Transform persists, but the List<>
+            // resize silently doesn't). Reflection writes the C# field directly, then
+            // EditorUtility.SetDirty marks the component for save.
+            SetPrivateField(ctrl, "groundCheck", groundCheck.transform);
+            SetPrivateField(weaponHolder, "muzzle", muzzle.transform);
+            if (pistol != null)
+                SetPrivateField(weaponHolder, "startingLoadout", new List<WeaponData> { pistol });
+            else
+                Debug.LogError("[SmokeTestSetup] Pistol is null when wiring Player — bullets will not fire.");
+            EditorUtility.SetDirty(ctrl);
+            EditorUtility.SetDirty(weaponHolder);
 
             return go;
+        }
+
+        private static void SetPrivateField(object target, string fieldName, object value)
+        {
+            var field = target.GetType().GetField(
+                fieldName,
+                BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+            if (field == null)
+            {
+                Debug.LogWarning($"[SmokeTestSetup] Field '{fieldName}' not found on {target.GetType().Name}");
+                return;
+            }
+            field.SetValue(target, value);
         }
 
         private static GameObject EnsureBulletPrefab()
