@@ -7,6 +7,8 @@
         "GunSlugsClone.Weapons",
         "GunSlugsClone.Enemies",
         "GunSlugsClone.Procedural",
+        "GunSlugsClone.UI",
+        "UnityEngine.UI",
         "Unity.InputSystem"
     ],
     "includePlatforms": [

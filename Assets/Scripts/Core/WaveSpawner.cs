@@ -16,10 +16,12 @@ namespace GunSlugsClone.Core
         {
             public int gruntCount;
             public int chargerCount;
+            public int bossCount;
         }
 
         [SerializeField] private GameObject gruntPrefab;
         [SerializeField] private GameObject chargerPrefab;
+        [SerializeField] private GameObject bossPrefab;
         [SerializeField] private List<Transform> spawnAnchors = new();
         [SerializeField] private List<WaveConfig> waves = new();
         [SerializeField] private float startDelay = 0.6f;
@@ -66,6 +68,7 @@ namespace GunSlugsClone.Core
             if (_currentWave >= waves.Count)
             {
                 Debug.Log($"[WaveSpawner] All {waves.Count} waves complete.");
+                EventBus.Publish(new AllWavesClearedEvent(waves.Count));
                 return;
             }
 
@@ -79,10 +82,11 @@ namespace GunSlugsClone.Core
             _aliveCount = 0;
             var anchorIdx = 0;
 
-            anchorIdx = SpawnBatch(gruntPrefab, wave.gruntCount, anchorIdx);
+            anchorIdx = SpawnBatch(gruntPrefab,   wave.gruntCount,   anchorIdx);
             anchorIdx = SpawnBatch(chargerPrefab, wave.chargerCount, anchorIdx);
+            anchorIdx = SpawnBatch(bossPrefab,    wave.bossCount,    anchorIdx);
 
-            Debug.Log($"[WaveSpawner] Wave {CurrentWave}/{TotalWaves}: {wave.gruntCount} grunts + {wave.chargerCount} chargers.");
+            Debug.Log($"[WaveSpawner] Wave {CurrentWave}/{TotalWaves}: {wave.gruntCount} grunts + {wave.chargerCount} chargers + {wave.bossCount} bosses.");
         }
 
         private int SpawnBatch(GameObject prefab, int count, int anchorIdx)

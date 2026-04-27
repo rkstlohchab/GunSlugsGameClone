@@ -1,7 +1,9 @@
 {
     "name": "GunSlugsClone.Core",
     "rootNamespace": "GunSlugsClone.Core",
-    "references": [],
+    "references": [
+        "Unity.InputSystem"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,

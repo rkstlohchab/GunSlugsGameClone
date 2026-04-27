@@ -10,8 +10,12 @@ using GunSlugsClone.Weapons;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.OnScreen;
+using UnityEngine.InputSystem.UI;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 namespace GunSlugsClone.EditorTools
 {
@@ -30,6 +34,8 @@ namespace GunSlugsClone.EditorTools
         private const string EnemyPrefabPath  = "Assets/Prefabs/Enemy_Grunt.prefab";
         private const string ChargerDataPath  = "Assets/ScriptableObjects/Enemies/enemy_charger.asset";
         private const string ChargerPrefabPath = "Assets/Prefabs/Enemy_Charger.prefab";
+        private const string BossDataPath     = "Assets/ScriptableObjects/Enemies/enemy_boss.asset";
+        private const string BossPrefabPath   = "Assets/Prefabs/Enemy_Boss.prefab";
         private const string RoomPrefabPath   = "Assets/Prefabs/RoomTemplate_Standard.prefab";
         private const string HealthPickupPath = "Assets/Prefabs/HealthPickup.prefab";
         private const string DeathBurstPath   = "Assets/Prefabs/Vfx_DeathBurst.prefab";
@@ -47,6 +53,7 @@ namespace GunSlugsClone.EditorTools
             ("Tiles/Characters/tile_0000.png", "character_player.png",  24),
             ("Tiles/Characters/tile_0024.png", "character_enemy.png",   24),
             ("Tiles/Characters/tile_0009.png", "character_charger.png", 24),
+            ("Tiles/Characters/tile_0026.png", "character_boss.png",    24),
             ("Tiles/tile_0006.png",            "tile_floor.png",        18),
             ("Tiles/tile_0044.png",            "tile_heart.png",        18),
             ("Tiles/tile_0151.png",            "tile_bullet.png",       18),
@@ -72,6 +79,7 @@ namespace GunSlugsClone.EditorTools
             EnsurePistolAsset();
             EnsureEnemyAssets();
             EnsureChargerAssets();
+            EnsureBossAssets();
             EnsureRoomTemplatePrefab();
             EnsureHealthPickupPrefab();
             EnsureDeathBurstPrefab();
@@ -102,6 +110,7 @@ namespace GunSlugsClone.EditorTools
             CreateVfxSpawner();
             AttachCameraFollow(camera, player.transform);
             CreateGameOverScreen();
+            CreateTouchControlsCanvas();
 
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene, ScenePath);
@@ -259,15 +268,108 @@ namespace GunSlugsClone.EditorTools
             }
         }
 
+        // Boss variant — single big tough enemy that ends the level when killed.
+        // Reuses GroundGruntAI for now; boss-specific behaviour (multi-stage HP,
+        // attack patterns, telegraphs) is M4 work.
+        private static void EnsureBossAssets()
+        {
+            try
+            {
+                EnsureFolder("Assets/ScriptableObjects/Enemies");
+                EnsureFolder("Assets/Prefabs");
+
+                if (AssetDatabase.LoadMainAssetAtPath(BossDataPath) != null)
+                    AssetDatabase.DeleteAsset(BossDataPath);
+                if (AssetDatabase.LoadMainAssetAtPath(BossPrefabPath) != null)
+                    AssetDatabase.DeleteAsset(BossPrefabPath);
+
+                var dataInstance = ScriptableObject.CreateInstance<EnemyData>();
+                AssetDatabase.CreateAsset(dataInstance, BossDataPath);
+                AssetDatabase.SaveAssets();
+                AssetDatabase.Refresh();
+
+                var data = AssetDatabase.LoadAssetAtPath<EnemyData>(BossDataPath);
+                if (data == null)
+                {
+                    Debug.LogError($"[SmokeTestSetup] LoadAssetAtPath returned null after CreateAsset for {BossDataPath}");
+                    return;
+                }
+
+                SetPrivateField(data, "Id", "enemy_boss");
+                SetPrivateField(data, "DisplayName", "Boss");
+                SetPrivateField(data, "Archetype", EnemyArchetype.Boss);
+                SetPrivateField(data, "MaxHealth", 100);
+                SetPrivateField(data, "MoveSpeed", 1.6f);
+                SetPrivateField(data, "AggroRange", 16f);
+                SetPrivateField(data, "AttackRange", 1.5f);
+                SetPrivateField(data, "AttackCooldown", 0.7f);
+                SetPrivateField(data, "ContactDamage", 2);
+                SetPrivateField(data, "ScoreOnKill", 200);
+                EditorUtility.SetDirty(data);
+                AssetDatabase.SaveAssets();
+
+                var go = new GameObject("Enemy_Boss");
+                go.transform.localScale = new Vector3(1.8f, 1.8f, 1f); // ~2x size
+
+                var sr = go.AddComponent<SpriteRenderer>();
+                sr.sortingOrder = 1;
+                var sprite = LoadKenneySprite("character_boss.png");
+                if (sprite != null)
+                {
+                    sr.sprite = sprite;
+                    sr.flipX = true;
+                }
+                else
+                {
+                    var ps = go.AddComponent<ProceduralSquare>();
+                    SetSerializedColor(ps, new Color(0.6f, 0.1f, 0.1f));
+                }
+
+                var rb = go.AddComponent<Rigidbody2D>();
+                rb.gravityScale = 3.5f;
+                rb.freezeRotation = true;
+                rb.mass = 5f; // heavier — bullets shouldn't shove it as much
+                rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+
+                var col = go.AddComponent<BoxCollider2D>();
+                col.size = new Vector2(1f, 1f); // collider stays 1x1 in local; transform.localScale 1.8 makes world 1.8x1.8
+
+                var ai = go.AddComponent<GroundGruntAI>();
+                SetPrivateField(ai, "data", data);
+                SetPrivateField(ai, "flashRenderer", sr);
+                SetPrivateField(ai, "patrolDistance", 4f);
+                SetPrivateField(ai, "groundMask", (LayerMask)1);
+
+                var edgeCheck = new GameObject("EdgeCheck");
+                edgeCheck.transform.SetParent(go.transform, worldPositionStays: false);
+                edgeCheck.transform.localPosition = new Vector3(0.6f, -0.6f, 0);
+                SetPrivateField(ai, "edgeCheck", edgeCheck.transform);
+
+                var prefab = PrefabUtility.SaveAsPrefabAsset(go, BossPrefabPath);
+                Object.DestroyImmediate(go);
+
+                var prefabAsset = AssetDatabase.LoadAssetAtPath<GameObject>(BossPrefabPath);
+                SetPrivateField(data, "Prefab", prefabAsset);
+                EditorUtility.SetDirty(data);
+                AssetDatabase.SaveAssets();
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[SmokeTestSetup] EnsureBossAssets threw: {e}");
+            }
+        }
+
         private static void CreateWaveSpawner(GameObject roomMiddle, GameObject roomLeft, GameObject roomRight, Transform playerTransform)
         {
             var go = new GameObject("WaveSpawner");
             var spawner = go.AddComponent<WaveSpawner>();
 
-            var grunt = AssetDatabase.LoadAssetAtPath<GameObject>(EnemyPrefabPath);
+            var grunt   = AssetDatabase.LoadAssetAtPath<GameObject>(EnemyPrefabPath);
             var charger = AssetDatabase.LoadAssetAtPath<GameObject>(ChargerPrefabPath);
-            if (grunt != null) SetPrivateField(spawner, "gruntPrefab", grunt);
+            var boss    = AssetDatabase.LoadAssetAtPath<GameObject>(BossPrefabPath);
+            if (grunt != null)   SetPrivateField(spawner, "gruntPrefab",   grunt);
             if (charger != null) SetPrivateField(spawner, "chargerPrefab", charger);
+            if (boss != null)    SetPrivateField(spawner, "bossPrefab",    boss);
 
             SetPrivateField(spawner, "playerTransform", playerTransform);
             SetPrivateField(spawner, "minSpawnDistance", 5f);
@@ -278,13 +380,14 @@ namespace GunSlugsClone.EditorTools
             CollectAnchors(roomRight, anchors);
             SetPrivateField(spawner, "spawnAnchors", anchors);
 
+            // Five waves, last one is the boss + escort.
             var waves = new List<WaveSpawner.WaveConfig>
             {
-                new WaveSpawner.WaveConfig { gruntCount = 3, chargerCount = 0 },
-                new WaveSpawner.WaveConfig { gruntCount = 4, chargerCount = 1 },
-                new WaveSpawner.WaveConfig { gruntCount = 5, chargerCount = 2 },
-                new WaveSpawner.WaveConfig { gruntCount = 6, chargerCount = 3 },
-                new WaveSpawner.WaveConfig { gruntCount = 7, chargerCount = 4 },
+                new WaveSpawner.WaveConfig { gruntCount = 3, chargerCount = 0, bossCount = 0 },
+                new WaveSpawner.WaveConfig { gruntCount = 4, chargerCount = 1, bossCount = 0 },
+                new WaveSpawner.WaveConfig { gruntCount = 5, chargerCount = 2, bossCount = 0 },
+                new WaveSpawner.WaveConfig { gruntCount = 6, chargerCount = 3, bossCount = 0 },
+                new WaveSpawner.WaveConfig { gruntCount = 0, chargerCount = 2, bossCount = 1 },
             };
             SetPrivateField(spawner, "waves", waves);
             SetPrivateField(spawner, "startDelay", 0.6f);
@@ -634,8 +737,10 @@ namespace GunSlugsClone.EditorTools
         private static GameObject EnsureBulletPrefab()
         {
             EnsureFolder("Assets/Prefabs");
-            var existing = AssetDatabase.LoadAssetAtPath<GameObject>(BulletPrefabPath);
-            if (existing != null) return existing;
+            // Always re-author so changes (e.g. adding a TrailRenderer below)
+            // land on the next 'Build Smoke Test Scene' run.
+            if (AssetDatabase.LoadMainAssetAtPath(BulletPrefabPath) != null)
+                AssetDatabase.DeleteAsset(BulletPrefabPath);
 
             var go = new GameObject("Bullet");
             go.transform.localScale = new Vector3(0.25f, 0.25f, 1f);
@@ -662,6 +767,35 @@ namespace GunSlugsClone.EditorTools
             var col = go.AddComponent<CircleCollider2D>();
             col.isTrigger = true;
             col.radius = 0.5f; // local; world radius = 0.125 with 0.25 scale
+
+            // Glowing trail behind the bullet. Sprites/Default works in URP 2D
+            // (URP doesn't ship a default trail material). Width tapers
+            // from full to zero across a 0.15s lifetime so the trail looks
+            // like a streak rather than a solid line.
+            var trail = go.AddComponent<TrailRenderer>();
+            trail.time = 0.15f;
+            trail.startWidth = 0.6f;
+            trail.endWidth = 0f;
+            trail.minVertexDistance = 0.05f;
+            trail.numCornerVertices = 0;
+            trail.numCapVertices = 0;
+            trail.sortingOrder = 2;
+            var trailShader = Shader.Find("Sprites/Default");
+            if (trailShader != null)
+                trail.sharedMaterial = new Material(trailShader) { name = "BulletTrailMat" };
+            trail.colorGradient = new Gradient
+            {
+                colorKeys = new[]
+                {
+                    new GradientColorKey(new Color(1f, 0.95f, 0.50f), 0f),
+                    new GradientColorKey(new Color(1f, 0.50f, 0.10f), 1f),
+                },
+                alphaKeys = new[]
+                {
+                    new GradientAlphaKey(1f, 0f),
+                    new GradientAlphaKey(0f, 1f),
+                },
+            };
 
             go.AddComponent<Projectile>();
 
@@ -993,6 +1127,125 @@ namespace GunSlugsClone.EditorTools
                 SetPrivateField(spawner, "healthPickupPrefab", pickupPrefab);
             SetPrivateField(spawner, "healthDropChance", 0.5f);
             SetPrivateField(spawner, "popupVelocity", new Vector2(2.5f, 5f));
+        }
+
+        // Builds a screen-space-overlay Canvas with an InputSystemUIInputModule
+        // EventSystem, an OnScreenStick driving Gamepad leftStick (which the
+        // InputActions Move binding picks up), and two OnScreenButtons for
+        // Jump and Fire mapped to the same Gamepad paths the InputActions
+        // already accept. Auto-disables in Editor when not running on a
+        // touch screen so it doesn't get in the way during desktop testing.
+        private static void CreateTouchControlsCanvas()
+        {
+            // EventSystem (skip if one already exists in the scene).
+            if (FindFirstObjectByType<EventSystem>() == null)
+            {
+                var es = new GameObject("EventSystem");
+                es.AddComponent<EventSystem>();
+                es.AddComponent<InputSystemUIInputModule>();
+            }
+
+            var canvasGo = new GameObject("TouchControlsCanvas");
+            var canvas = canvasGo.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.sortingOrder = 100;
+            var scaler = canvasGo.AddComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1920f, 1080f);
+            scaler.matchWidthOrHeight = 0.5f;
+            canvasGo.AddComponent<GraphicRaycaster>();
+
+            // Auto-hide on desktop with a gamepad attached, show on mobile / touch.
+            canvasGo.AddComponent<TouchControlsAutoVisibility>();
+
+            CreateOnScreenStick(canvasGo.transform,
+                anchorMin: new Vector2(0f, 0f),
+                anchorMax: new Vector2(0f, 0f),
+                pivot: new Vector2(0f, 0f),
+                anchoredPos: new Vector2(80f, 80f),
+                size: new Vector2(280f, 280f),
+                controlPath: "<Gamepad>/leftStick");
+
+            CreateOnScreenButton(canvasGo.transform,
+                label: "JUMP",
+                anchorMin: new Vector2(1f, 0f),
+                anchorMax: new Vector2(1f, 0f),
+                pivot: new Vector2(1f, 0f),
+                anchoredPos: new Vector2(-260f, 100f),
+                size: new Vector2(180f, 180f),
+                controlPath: "<Keyboard>/space");
+
+            CreateOnScreenButton(canvasGo.transform,
+                label: "FIRE",
+                anchorMin: new Vector2(1f, 0f),
+                anchorMax: new Vector2(1f, 0f),
+                pivot: new Vector2(1f, 0f),
+                anchoredPos: new Vector2(-60f, 200f),
+                size: new Vector2(220f, 220f),
+                controlPath: "<Keyboard>/leftCtrl");
+        }
+
+        private static void CreateOnScreenStick(Transform parent, Vector2 anchorMin, Vector2 anchorMax, Vector2 pivot, Vector2 anchoredPos, Vector2 size, string controlPath)
+        {
+            // Outer ring background.
+            var ringGo = new GameObject("Joystick");
+            ringGo.transform.SetParent(parent, worldPositionStays: false);
+            var ringRect = ringGo.AddComponent<RectTransform>();
+            ringRect.anchorMin = anchorMin;
+            ringRect.anchorMax = anchorMax;
+            ringRect.pivot = pivot;
+            ringRect.anchoredPosition = anchoredPos;
+            ringRect.sizeDelta = size;
+            var ringImg = ringGo.AddComponent<Image>();
+            ringImg.color = new Color(1f, 1f, 1f, 0.18f);
+
+            // Inner thumb (this is what OnScreenStick moves).
+            var thumbGo = new GameObject("Thumb");
+            thumbGo.transform.SetParent(ringGo.transform, worldPositionStays: false);
+            var thumbRect = thumbGo.AddComponent<RectTransform>();
+            thumbRect.anchorMin = new Vector2(0.5f, 0.5f);
+            thumbRect.anchorMax = new Vector2(0.5f, 0.5f);
+            thumbRect.pivot = new Vector2(0.5f, 0.5f);
+            thumbRect.sizeDelta = size * 0.45f;
+            thumbRect.anchoredPosition = Vector2.zero;
+            var thumbImg = thumbGo.AddComponent<Image>();
+            thumbImg.color = new Color(1f, 1f, 1f, 0.42f);
+
+            var stick = thumbGo.AddComponent<OnScreenStick>();
+            stick.controlPath = controlPath;
+        }
+
+        private static void CreateOnScreenButton(Transform parent, string label, Vector2 anchorMin, Vector2 anchorMax, Vector2 pivot, Vector2 anchoredPos, Vector2 size, string controlPath)
+        {
+            var go = new GameObject($"Btn_{label}");
+            go.transform.SetParent(parent, worldPositionStays: false);
+            var rect = go.AddComponent<RectTransform>();
+            rect.anchorMin = anchorMin;
+            rect.anchorMax = anchorMax;
+            rect.pivot = pivot;
+            rect.anchoredPosition = anchoredPos;
+            rect.sizeDelta = size;
+
+            var img = go.AddComponent<Image>();
+            img.color = new Color(1f, 1f, 1f, 0.22f);
+
+            var labelGo = new GameObject("Label");
+            labelGo.transform.SetParent(go.transform, worldPositionStays: false);
+            var labelRect = labelGo.AddComponent<RectTransform>();
+            labelRect.anchorMin = Vector2.zero;
+            labelRect.anchorMax = Vector2.one;
+            labelRect.offsetMin = Vector2.zero;
+            labelRect.offsetMax = Vector2.zero;
+            var text = labelGo.AddComponent<Text>();
+            text.text = label;
+            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            text.alignment = TextAnchor.MiddleCenter;
+            text.fontSize = 38;
+            text.fontStyle = FontStyle.Bold;
+            text.color = Color.white;
+
+            var btn = go.AddComponent<OnScreenButton>();
+            btn.controlPath = controlPath;
         }
 
         private static void WirePlayerInput(GameObject player)
