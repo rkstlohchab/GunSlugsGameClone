@@ -115,7 +115,6 @@ namespace GunSlugsClone.EditorTools
             // Load pistol fresh at the moment of use — sidesteps the post-CreateAsset
             // fake-null window that broke earlier attempts to pass the reference around.
             var pistol = AssetDatabase.LoadAssetAtPath<WeaponData>(PistolAssetPath);
-            Debug.Log($"[CreatePlayer] Loaded pistol: {(pistol != null ? "non-null id=" + pistol.Id + " prefab=" + (pistol.ProjectilePrefab != null ? pistol.ProjectilePrefab.name : "NULL") : "NULL")}");
 
             var go = new GameObject("Player");
             go.transform.position = new Vector3(0, 0, 0);
