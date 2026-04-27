@@ -30,6 +30,8 @@ namespace GunSlugsClone.EditorTools
         private const string EnemyPrefabPath  = "Assets/Prefabs/Enemy_Grunt.prefab";
         private const string RoomPrefabPath   = "Assets/Prefabs/RoomTemplate_Standard.prefab";
         private const string HealthPickupPath = "Assets/Prefabs/HealthPickup.prefab";
+        private const string DeathBurstPath   = "Assets/Prefabs/Vfx_DeathBurst.prefab";
+        private const string MuzzleFlashPath  = "Assets/Prefabs/Vfx_MuzzleFlash.prefab";
 
         private const string KenneySource = "/Users/raksithlochabb/Downloads/kenneypack/kenney_pixel-platformer";
         private const string KenneyDest   = "Assets/Art/Kenney";
@@ -62,10 +64,12 @@ namespace GunSlugsClone.EditorTools
             EnsureFolder("Assets/Scenes");
             ImportKenneyArt();
             EnsureBulletPrefab();
+            EnsureMuzzleFlashPrefab();
             EnsurePistolAsset();
             EnsureEnemyAssets();
             EnsureRoomTemplatePrefab();
             EnsureHealthPickupPrefab();
+            EnsureDeathBurstPrefab();
 
             var scene = OpenOrCreateScene();
             ClearScene(scene);
@@ -91,6 +95,7 @@ namespace GunSlugsClone.EditorTools
             SpawnEnemiesAtRoomAnchors(player, roomRight,  maxPerRoom: 2);
 
             CreateLootSpawner();
+            CreateVfxSpawner();
             AttachCameraFollow(camera, player.transform);
             CreateGameOverScreen();
 
@@ -571,6 +576,10 @@ namespace GunSlugsClone.EditorTools
                 SetPrivateField(pistol, "BurstInterval", 0f);
                 SetPrivateField(pistol, "ProjectilePrefab", bulletPrefab);
 
+                var muzzleFlashPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(MuzzleFlashPath);
+                if (muzzleFlashPrefab != null)
+                    SetPrivateField(pistol, "MuzzleFlashPrefab", muzzleFlashPrefab);
+
                 EditorUtility.SetDirty(pistol);
                 AssetDatabase.SaveAssets();
                 AssetDatabase.Refresh();
@@ -687,6 +696,102 @@ namespace GunSlugsClone.EditorTools
         {
             var go = new GameObject("GameOverScreen");
             go.AddComponent<GameOverScreen>();
+        }
+
+        private static void EnsureDeathBurstPrefab()
+        {
+            try
+            {
+                EnsureFolder("Assets/Prefabs");
+                if (AssetDatabase.LoadMainAssetAtPath(DeathBurstPath) != null)
+                    AssetDatabase.DeleteAsset(DeathBurstPath);
+
+                var go = new GameObject("Vfx_DeathBurst");
+                var ps = go.AddComponent<ParticleSystem>();
+                ConfigureParticleSystem(
+                    ps,
+                    burstCount: 16,
+                    color: new Color(1f, 0.4f, 0.4f, 1f),
+                    startSpeed: 5f,
+                    lifetime: 0.55f,
+                    startSize: 0.18f,
+                    gravity: 1.5f,
+                    coneAngle: 360f,
+                    sortingOrder: 8);
+
+                PrefabUtility.SaveAsPrefabAsset(go, DeathBurstPath);
+                Object.DestroyImmediate(go);
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[SmokeTestSetup] EnsureDeathBurstPrefab threw: {e}");
+            }
+        }
+
+        private static void EnsureMuzzleFlashPrefab()
+        {
+            try
+            {
+                EnsureFolder("Assets/Prefabs");
+                if (AssetDatabase.LoadMainAssetAtPath(MuzzleFlashPath) != null)
+                    AssetDatabase.DeleteAsset(MuzzleFlashPath);
+
+                var go = new GameObject("Vfx_MuzzleFlash");
+                var ps = go.AddComponent<ParticleSystem>();
+                ConfigureParticleSystem(
+                    ps,
+                    burstCount: 6,
+                    color: new Color(1f, 0.92f, 0.45f, 1f),
+                    startSpeed: 3f,
+                    lifetime: 0.12f,
+                    startSize: 0.1f,
+                    gravity: 0f,
+                    coneAngle: 25f,
+                    sortingOrder: 8);
+
+                PrefabUtility.SaveAsPrefabAsset(go, MuzzleFlashPath);
+                Object.DestroyImmediate(go);
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[SmokeTestSetup] EnsureMuzzleFlashPrefab threw: {e}");
+            }
+        }
+
+        private static void ConfigureParticleSystem(ParticleSystem ps, int burstCount, Color color, float startSpeed, float lifetime, float startSize, float gravity, float coneAngle, int sortingOrder)
+        {
+            // Stop the default emission so only the burst fires.
+            var emission = ps.emission;
+            emission.rateOverTime = 0f;
+            emission.SetBursts(new[] { new ParticleSystem.Burst(0f, (short)burstCount) });
+
+            var main = ps.main;
+            main.startLifetime = lifetime;
+            main.startSpeed = startSpeed;
+            main.startSize = startSize;
+            main.startColor = color;
+            main.gravityModifier = gravity;
+            main.duration = 0.05f;
+            main.loop = false;
+            main.playOnAwake = true;
+            main.stopAction = ParticleSystemStopAction.Destroy;
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+
+            var shape = ps.shape;
+            shape.shapeType = coneAngle >= 180f ? ParticleSystemShapeType.Circle : ParticleSystemShapeType.Cone;
+            shape.angle = Mathf.Min(coneAngle * 0.5f, 89f);
+            shape.radius = 0.05f;
+
+            var renderer = ps.GetComponent<ParticleSystemRenderer>();
+            if (renderer != null) renderer.sortingOrder = sortingOrder;
+        }
+
+        private static void CreateVfxSpawner()
+        {
+            var go = new GameObject("VfxSpawner");
+            var spawner = go.AddComponent<VfxSpawner>();
+            var burst = AssetDatabase.LoadAssetAtPath<GameObject>(DeathBurstPath);
+            if (burst != null) SetPrivateField(spawner, "deathBurstPrefab", burst);
         }
 
         private static void EnsureHealthPickupPrefab()
