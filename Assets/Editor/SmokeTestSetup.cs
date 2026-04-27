@@ -718,17 +718,16 @@ namespace GunSlugsClone.EditorTools
                     AssetDatabase.DeleteAsset(DeathBurstPath);
 
                 var go = new GameObject("Vfx_DeathBurst");
-                var ps = go.AddComponent<ParticleSystem>();
-                ConfigureParticleSystem(
-                    ps,
-                    burstCount: 18,
-                    color: new Color(1f, 0.35f, 0.35f, 1f),
-                    startSpeed: 5.5f,
-                    lifetime: 0.65f,
-                    startSize: 0.3f,
-                    gravity: 1.4f,
-                    coneAngle: 360f,
-                    sortingOrder: 10);
+                var burst = go.AddComponent<SimpleParticleBurst>();
+                SetPrivateField(burst, "count", 18);
+                SetPrivateField(burst, "speed", 5.5f);
+                SetPrivateField(burst, "speedJitter", 1.5f);
+                SetPrivateField(burst, "lifetime", 0.7f);
+                SetPrivateField(burst, "size", 0.18f);
+                SetPrivateField(burst, "color", new Color(1f, 0.35f, 0.35f, 1f));
+                SetPrivateField(burst, "gravityScale", 1.4f);
+                SetPrivateField(burst, "coneAngleDegrees", 360f);
+                SetPrivateField(burst, "sortingOrder", 10);
 
                 PrefabUtility.SaveAsPrefabAsset(go, DeathBurstPath);
                 Object.DestroyImmediate(go);
@@ -748,17 +747,17 @@ namespace GunSlugsClone.EditorTools
                     AssetDatabase.DeleteAsset(MuzzleFlashPath);
 
                 var go = new GameObject("Vfx_MuzzleFlash");
-                var ps = go.AddComponent<ParticleSystem>();
-                ConfigureParticleSystem(
-                    ps,
-                    burstCount: 10,
-                    color: new Color(1f, 0.92f, 0.40f, 1f),
-                    startSpeed: 4f,
-                    lifetime: 0.18f,
-                    startSize: 0.22f,
-                    gravity: 0f,
-                    coneAngle: 30f,
-                    sortingOrder: 10);
+                var burst = go.AddComponent<SimpleParticleBurst>();
+                SetPrivateField(burst, "count", 8);
+                SetPrivateField(burst, "speed", 4f);
+                SetPrivateField(burst, "speedJitter", 1f);
+                SetPrivateField(burst, "lifetime", 0.25f);
+                SetPrivateField(burst, "size", 0.15f);
+                SetPrivateField(burst, "color", new Color(1f, 0.92f, 0.40f, 1f));
+                SetPrivateField(burst, "gravityScale", 0f);
+                SetPrivateField(burst, "coneAngleDegrees", 35f);
+                SetPrivateField(burst, "baseDirection", Vector2.up);
+                SetPrivateField(burst, "sortingOrder", 10);
 
                 PrefabUtility.SaveAsPrefabAsset(go, MuzzleFlashPath);
                 Object.DestroyImmediate(go);
@@ -766,47 +765,6 @@ namespace GunSlugsClone.EditorTools
             catch (System.Exception e)
             {
                 Debug.LogError($"[SmokeTestSetup] EnsureMuzzleFlashPrefab threw: {e}");
-            }
-        }
-
-        private static void ConfigureParticleSystem(ParticleSystem ps, int burstCount, Color color, float startSpeed, float lifetime, float startSize, float gravity, float coneAngle, int sortingOrder)
-        {
-            // Stop the default emission so only the burst fires.
-            var emission = ps.emission;
-            emission.rateOverTime = 0f;
-            emission.SetBursts(new[] { new ParticleSystem.Burst(0f, (short)burstCount) });
-
-            var main = ps.main;
-            main.startLifetime = lifetime;
-            main.startSpeed = startSpeed;
-            main.startSize = startSize;
-            main.startColor = color;
-            main.gravityModifier = gravity;
-            main.duration = 0.1f;
-            main.loop = false;
-            main.playOnAwake = true;
-            main.stopAction = ParticleSystemStopAction.Destroy;
-            main.simulationSpace = ParticleSystemSimulationSpace.World;
-
-            var shape = ps.shape;
-            shape.shapeType = coneAngle >= 180f ? ParticleSystemShapeType.Circle : ParticleSystemShapeType.Cone;
-            shape.angle = Mathf.Min(coneAngle * 0.5f, 89f);
-            shape.radius = 0.05f;
-
-            var renderer = ps.GetComponent<ParticleSystemRenderer>();
-            if (renderer != null)
-            {
-                renderer.sortingOrder = sortingOrder;
-                // The default ParticleSystem material isn't assigned in URP 2D —
-                // particles end up rendering as missing/magenta and look invisible
-                // depending on the URP renderer feature set. Sprites/Default is
-                // the safe cross-pipeline default for unlit colored particles.
-                var shader = Shader.Find("Sprites/Default");
-                if (shader != null)
-                {
-                    var mat = new Material(shader) { name = $"PS_{ps.gameObject.name}_Mat" };
-                    renderer.sharedMaterial = mat;
-                }
             }
         }
 
