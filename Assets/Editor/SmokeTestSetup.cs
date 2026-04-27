@@ -28,6 +28,8 @@ namespace GunSlugsClone.EditorTools
         private const string PistolAssetPath  = "Assets/ScriptableObjects/Weapons/weapon_pistol.asset";
         private const string EnemyDataPath   = "Assets/ScriptableObjects/Enemies/enemy_grunt.asset";
         private const string EnemyPrefabPath  = "Assets/Prefabs/Enemy_Grunt.prefab";
+        private const string ChargerDataPath  = "Assets/ScriptableObjects/Enemies/enemy_charger.asset";
+        private const string ChargerPrefabPath = "Assets/Prefabs/Enemy_Charger.prefab";
         private const string RoomPrefabPath   = "Assets/Prefabs/RoomTemplate_Standard.prefab";
         private const string HealthPickupPath = "Assets/Prefabs/HealthPickup.prefab";
         private const string DeathBurstPath   = "Assets/Prefabs/Vfx_DeathBurst.prefab";
@@ -42,12 +44,13 @@ namespace GunSlugsClone.EditorTools
         // user's Downloads folder.
         private static readonly (string src, string dst, int pixelsPerUnit)[] KenneyFiles = new[]
         {
-            ("Tiles/Characters/tile_0000.png", "character_player.png", 24),
-            ("Tiles/Characters/tile_0024.png", "character_enemy.png",  24),
-            ("Tiles/tile_0006.png",            "tile_floor.png",       18),
-            ("Tiles/tile_0044.png",            "tile_heart.png",       18),
-            ("Tiles/tile_0151.png",            "tile_bullet.png",      18),
-            ("Tiles/Backgrounds/tile_0000.png","tile_bg.png",           18),
+            ("Tiles/Characters/tile_0000.png", "character_player.png",  24),
+            ("Tiles/Characters/tile_0024.png", "character_enemy.png",   24),
+            ("Tiles/Characters/tile_0009.png", "character_charger.png", 24),
+            ("Tiles/tile_0006.png",            "tile_floor.png",        18),
+            ("Tiles/tile_0044.png",            "tile_heart.png",        18),
+            ("Tiles/tile_0151.png",            "tile_bullet.png",       18),
+            ("Tiles/Backgrounds/tile_0000.png","tile_bg.png",            18),
         };
 
         [MenuItem("GunSlugs/Build Smoke Test Scene")]
@@ -68,6 +71,7 @@ namespace GunSlugsClone.EditorTools
             EnsureMuzzleFlashPrefab();
             EnsurePistolAsset();
             EnsureEnemyAssets();
+            EnsureChargerAssets();
             EnsureRoomTemplatePrefab();
             EnsureHealthPickupPrefab();
             EnsureDeathBurstPrefab();
@@ -89,11 +93,10 @@ namespace GunSlugsClone.EditorTools
             PositionPlayerAtRoomSpawn(player, roomMiddle);
             WirePlayerInput(player);
 
-            // Two enemies per room — six total enemies across the level
-            // without making any single room a meat-grinder.
-            SpawnEnemiesAtRoomAnchors(player, roomMiddle, maxPerRoom: 2);
-            SpawnEnemiesAtRoomAnchors(player, roomLeft,   maxPerRoom: 2);
-            SpawnEnemiesAtRoomAnchors(player, roomRight,  maxPerRoom: 2);
+            // Wave-based spawning replaces the old static "spawn 2 enemies per
+            // room" pass — the WaveSpawner watches EnemyKilledEvent and spawns
+            // the next wave when all enemies are cleared.
+            CreateWaveSpawner(roomMiddle, roomLeft, roomRight);
 
             CreateLootSpawner();
             CreateVfxSpawner();
@@ -144,7 +147,7 @@ namespace GunSlugsClone.EditorTools
             go.transform.position = new Vector3(0, 0, -10);
             var cam = go.AddComponent<Camera>();
             cam.orthographic = true;
-            cam.orthographicSize = 9f;
+            cam.orthographicSize = 5f;
             cam.clearFlags = CameraClearFlags.SolidColor;
             cam.backgroundColor = new Color(0.10f, 0.12f, 0.16f, 1f);
             go.AddComponent<AudioListener>();
@@ -167,6 +170,132 @@ namespace GunSlugsClone.EditorTools
         // and three enemy spawn anchors. M2 next steps swap multiple
         // RoomTemplate variants into a BiomeConfig SO and let LevelGenerator
         // stitch them via the door sockets.
+        // Charger variant — faster, lower HP, more aggressive aggro range.
+        // Same GroundGruntAI behaviour for now (just data-driven differences);
+        // a dedicated ChargerAI with leap/dash logic is later combat-content work.
+        private static void EnsureChargerAssets()
+        {
+            try
+            {
+                EnsureFolder("Assets/ScriptableObjects");
+                EnsureFolder("Assets/ScriptableObjects/Enemies");
+                EnsureFolder("Assets/Prefabs");
+
+                if (AssetDatabase.LoadMainAssetAtPath(ChargerDataPath) != null)
+                    AssetDatabase.DeleteAsset(ChargerDataPath);
+                if (AssetDatabase.LoadMainAssetAtPath(ChargerPrefabPath) != null)
+                    AssetDatabase.DeleteAsset(ChargerPrefabPath);
+
+                var dataInstance = ScriptableObject.CreateInstance<EnemyData>();
+                AssetDatabase.CreateAsset(dataInstance, ChargerDataPath);
+                AssetDatabase.SaveAssets();
+                AssetDatabase.Refresh();
+
+                var data = AssetDatabase.LoadAssetAtPath<EnemyData>(ChargerDataPath);
+                if (data == null)
+                {
+                    Debug.LogError($"[SmokeTestSetup] LoadAssetAtPath returned null after CreateAsset for {ChargerDataPath}");
+                    return;
+                }
+
+                SetPrivateField(data, "Id", "enemy_charger");
+                SetPrivateField(data, "DisplayName", "Charger");
+                SetPrivateField(data, "Archetype", EnemyArchetype.Charger);
+                SetPrivateField(data, "MaxHealth", 12);
+                SetPrivateField(data, "MoveSpeed", 4.5f);
+                SetPrivateField(data, "AggroRange", 12f);
+                SetPrivateField(data, "AttackRange", 1.0f);
+                SetPrivateField(data, "AttackCooldown", 0.6f);
+                SetPrivateField(data, "ContactDamage", 1);
+                SetPrivateField(data, "ScoreOnKill", 20);
+                EditorUtility.SetDirty(data);
+                AssetDatabase.SaveAssets();
+
+                var go = new GameObject("Enemy_Charger");
+                var sr = go.AddComponent<SpriteRenderer>();
+                sr.sortingOrder = 1;
+                var sprite = LoadKenneySprite("character_charger.png");
+                if (sprite != null)
+                {
+                    sr.sprite = sprite;
+                    sr.flipX = true;
+                }
+                else
+                {
+                    var ps = go.AddComponent<ProceduralSquare>();
+                    SetSerializedColor(ps, new Color(0.95f, 0.45f, 0.15f));
+                }
+
+                var rb = go.AddComponent<Rigidbody2D>();
+                rb.gravityScale = 3.5f;
+                rb.freezeRotation = true;
+                rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+
+                var col = go.AddComponent<BoxCollider2D>();
+                col.size = new Vector2(1f, 1f);
+
+                var ai = go.AddComponent<GroundGruntAI>();
+                SetPrivateField(ai, "data", data);
+                SetPrivateField(ai, "flashRenderer", sr);
+                SetPrivateField(ai, "patrolDistance", 4f);
+                SetPrivateField(ai, "groundMask", (LayerMask)1);
+
+                var edgeCheck = new GameObject("EdgeCheck");
+                edgeCheck.transform.SetParent(go.transform, worldPositionStays: false);
+                edgeCheck.transform.localPosition = new Vector3(0.6f, -0.6f, 0);
+                SetPrivateField(ai, "edgeCheck", edgeCheck.transform);
+
+                var prefab = PrefabUtility.SaveAsPrefabAsset(go, ChargerPrefabPath);
+                Object.DestroyImmediate(go);
+
+                var prefabAsset = AssetDatabase.LoadAssetAtPath<GameObject>(ChargerPrefabPath);
+                SetPrivateField(data, "Prefab", prefabAsset);
+                EditorUtility.SetDirty(data);
+                AssetDatabase.SaveAssets();
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[SmokeTestSetup] EnsureChargerAssets threw: {e}");
+            }
+        }
+
+        private static void CreateWaveSpawner(GameObject roomMiddle, GameObject roomLeft, GameObject roomRight)
+        {
+            var go = new GameObject("WaveSpawner");
+            var spawner = go.AddComponent<WaveSpawner>();
+
+            var grunt = AssetDatabase.LoadAssetAtPath<GameObject>(EnemyPrefabPath);
+            var charger = AssetDatabase.LoadAssetAtPath<GameObject>(ChargerPrefabPath);
+            if (grunt != null) SetPrivateField(spawner, "gruntPrefab", grunt);
+            if (charger != null) SetPrivateField(spawner, "chargerPrefab", charger);
+
+            var anchors = new List<Transform>();
+            CollectAnchors(roomMiddle, anchors);
+            CollectAnchors(roomLeft, anchors);
+            CollectAnchors(roomRight, anchors);
+            SetPrivateField(spawner, "spawnAnchors", anchors);
+
+            var waves = new List<WaveSpawner.WaveConfig>
+            {
+                new WaveSpawner.WaveConfig { gruntCount = 3, chargerCount = 0 },
+                new WaveSpawner.WaveConfig { gruntCount = 4, chargerCount = 1 },
+                new WaveSpawner.WaveConfig { gruntCount = 5, chargerCount = 2 },
+                new WaveSpawner.WaveConfig { gruntCount = 6, chargerCount = 3 },
+                new WaveSpawner.WaveConfig { gruntCount = 7, chargerCount = 4 },
+            };
+            SetPrivateField(spawner, "waves", waves);
+            SetPrivateField(spawner, "startDelay", 0.6f);
+            SetPrivateField(spawner, "delayBetweenWaves", 1.5f);
+        }
+
+        private static void CollectAnchors(GameObject roomGo, List<Transform> dest)
+        {
+            if (roomGo == null) return;
+            if (!roomGo.TryGetComponent<RoomTemplate>(out var rt)) return;
+            foreach (var a in rt.EnemySpawns)
+                if (a != null) dest.Add(a);
+        }
+
         private static void EnsureRoomTemplatePrefab()
         {
             try
