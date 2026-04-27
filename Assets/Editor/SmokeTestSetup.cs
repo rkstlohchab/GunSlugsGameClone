@@ -48,11 +48,12 @@ namespace GunSlugsClone.EditorTools
             var scene = OpenOrCreateScene();
             ClearScene(scene);
 
-            CreateCamera();
+            var camera = CreateCamera();
             CreateGround();
             var player = CreatePlayer();
             WirePlayerInput(player);
             SpawnEnemy(player);
+            AttachCameraFollow(camera, player.transform);
 
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene, ScenePath);
@@ -91,7 +92,7 @@ namespace GunSlugsClone.EditorTools
                 Object.DestroyImmediate(go);
         }
 
-        private static void CreateCamera()
+        private static Camera CreateCamera()
         {
             var go = new GameObject("Main Camera");
             go.tag = "MainCamera";
@@ -102,6 +103,17 @@ namespace GunSlugsClone.EditorTools
             cam.clearFlags = CameraClearFlags.SolidColor;
             cam.backgroundColor = new Color(0.10f, 0.12f, 0.16f, 1f);
             go.AddComponent<AudioListener>();
+            return cam;
+        }
+
+        private static void AttachCameraFollow(Camera camera, Transform target)
+        {
+            if (camera == null || target == null) return;
+            var follow = camera.gameObject.AddComponent<CameraFollow>();
+            SetPrivateField(follow, "target", target);
+            SetPrivateField(follow, "offset", new Vector3(0f, 1f, -10f));
+            SetPrivateField(follow, "damping", 6f);
+            SetPrivateField(follow, "snapOnFirstFrame", true);
         }
 
         private static void CreateGround()

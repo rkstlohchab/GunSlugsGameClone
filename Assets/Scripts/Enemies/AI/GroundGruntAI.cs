@@ -21,6 +21,8 @@ namespace GunSlugsClone.Enemies.AI
         private void FixedUpdate()
         {
             if (Health <= 0) return;
+            if (AttackCdTimer > 0f) AttackCdTimer -= Time.fixedDeltaTime;
+
             var hasTarget = Target != null;
             var distToTarget = hasTarget ? Vector2.Distance(transform.position, Target.position) : float.MaxValue;
             _aggro = hasTarget && distToTarget <= data.AggroRange;
@@ -30,7 +32,6 @@ namespace GunSlugsClone.Enemies.AI
             {
                 var dir = Mathf.Sign(Target.position.x - transform.position.x);
                 velocity.x = dir * data.MoveSpeed * 1.2f;
-                if (distToTarget <= data.AttackRange) TryAttack();
             }
             else
             {
@@ -45,14 +46,10 @@ namespace GunSlugsClone.Enemies.AI
             }
         }
 
-        private void TryAttack()
-        {
-            if (AttackCdTimer > 0f) { AttackCdTimer -= Time.fixedDeltaTime; return; }
-            AttackCdTimer = data.AttackCooldown;
-            // Contact-damage handled in OnCollisionEnter2D below; ranged variants would override.
-        }
-
-        private void OnCollisionEnter2D(Collision2D col)
+        // OnCollisionStay2D rather than Enter so contact damage continues while
+        // the player is sitting on top of the enemy. PlayerHealth's invulnerability
+        // window (i-frames) gates how often damage actually applies.
+        private void OnCollisionStay2D(Collision2D col)
         {
             if (col.collider.TryGetComponent<Player.PlayerHealth>(out var ph))
                 ph.TakeDamage(data.ContactDamage);
