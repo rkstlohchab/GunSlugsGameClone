@@ -139,7 +139,7 @@ namespace GunSlugsClone.EditorTools
             var col = go.AddComponent<BoxCollider2D>();
             col.size = new Vector2(1f, 1f);
 
-            go.AddComponent<PlayerHealth>();
+            var playerHealth = go.AddComponent<PlayerHealth>();
             var weaponHolder = go.AddComponent<WeaponHolder>();
             var ctrl = go.AddComponent<PlayerController>();
 
@@ -166,7 +166,26 @@ namespace GunSlugsClone.EditorTools
             EditorUtility.SetDirty(ctrl);
             EditorUtility.SetDirty(weaponHolder);
 
+            CreateHealthBar(playerHealth);
+
             return go;
+        }
+
+        private static void CreateHealthBar(PlayerHealth target)
+        {
+            var go = new GameObject("HealthBar");
+            go.transform.position = target.transform.position + new Vector3(0f, 0.7f, 0f);
+            go.transform.localScale = new Vector3(1f, 0.15f, 1f);
+
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sortingOrder = 5;
+            var ps = go.AddComponent<ProceduralSquare>();
+            SetSerializedColor(ps, new Color(0.20f, 0.85f, 0.30f));
+
+            var bar = go.AddComponent<HealthBar>();
+            SetPrivateField(bar, "target", target);
+            SetPrivateField(bar, "fullWidth", 1f);
+            SetPrivateField(bar, "thickness", 0.15f);
         }
 
         private static void SetPrivateField(object target, string fieldName, object value)

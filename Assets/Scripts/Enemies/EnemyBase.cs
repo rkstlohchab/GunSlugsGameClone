@@ -22,6 +22,18 @@ namespace GunSlugsClone.Enemies
             Health = data != null ? data.MaxHealth : 10;
         }
 
+        protected virtual void Start()
+        {
+            // Target is non-serialized so explicit SetTarget calls don't survive
+            // a scene save. Fall back to finding the Player at scene start so
+            // enemies authored at edit time still aggro on Play.
+            if (Target == null)
+            {
+                var pc = FindFirstObjectByType<GunSlugsClone.Player.PlayerController>();
+                if (pc != null) Target = pc.transform;
+            }
+        }
+
         public void SetTarget(Transform t) => Target = t;
 
         public void ApplyDamage(int amount, Vector2 knockback)
