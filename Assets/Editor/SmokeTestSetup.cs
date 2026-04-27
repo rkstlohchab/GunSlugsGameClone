@@ -100,14 +100,11 @@ namespace GunSlugsClone.EditorTools
             ClearScene(scene);
 
             var camera = CreateCamera();
-            CreateBackground();
 
-            // M2 step: build the level via LevelGenerator from the BiomeConfig
-            // SO. Generator picks templates from biome.RoomTemplates and stitches
-            // them via door sockets. Falls back to a hand-stitched 3-room layout
-            // if the biome config isn't loadable (e.g. first build before the SO
-            // import has finished).
+            // Build the level FIRST so we know the world-space bounds, then
+            // size+position the background to cover them.
             var rooms = BuildLevelFromBiome();
+            CreateBackgroundForLevel(rooms);
             var startRoom = rooms.Count > 0 ? rooms[0] : null;
 
             var player = CreatePlayer();
@@ -283,38 +280,48 @@ namespace GunSlugsClone.EditorTools
             }
         }
 
+        // Manual deterministic horizontal layout: variant sequence picked from
+        // a seeded RNG, rooms positioned with their walls touching so floors
+        // and door gaps align cleanly. LevelGenerator's freeform graph layout
+        // produces non-linear shapes that don't read as a side-scrolling
+        // platformer; revisit it for a 2D-grid-based dungeon biome later.
         private static List<GameObject> BuildLevelFromBiome()
         {
-            var biome = AssetDatabase.LoadAssetAtPath<BiomeConfig>(BiomeConfigPath);
             var rooms = new List<GameObject>();
-            if (biome == null || !biome.IsValid)
+            var standard   = AssetDatabase.LoadAssetAtPath<GameObject>(RoomPrefabPath);
+            var hallway    = AssetDatabase.LoadAssetAtPath<GameObject>(RoomHallwayPath);
+            var bossArena  = AssetDatabase.LoadAssetAtPath<GameObject>(RoomBossArenaPath);
+            if (standard == null || hallway == null || bossArena == null)
             {
-                Debug.LogWarning("[SmokeTestSetup] BiomeConfig invalid or missing — falling back to single Standard room.");
-                var fallback = InstantiateRoom(Vector3.zero);
-                if (fallback != null) rooms.Add(fallback);
+                Debug.LogWarning("[SmokeTestSetup] One or more room prefabs missing — falling back to single Standard room.");
+                if (standard != null) rooms.Add((GameObject)PrefabUtility.InstantiatePrefab(standard));
                 return rooms;
             }
 
-            try
+            // Seeded variant sequence: always Standard start + BossArena finish,
+            // 3 random middle rooms picked between Standard and Hallway.
+            var rng = new DeterministicRng(seed: 42);
+            var middlePool = new[] { standard, hallway };
+            var sequence = new List<GameObject> { standard };
+            for (var i = 0; i < 3; i++) sequence.Add(rng.Pick(middlePool));
+            sequence.Add(bossArena);
+
+            // Place rooms left-to-right with walls touching. All variants are
+            // 14 tall, so all floors land at y = -7 with a uniform y=0 center.
+            var prevRightX = float.NegativeInfinity;
+            foreach (var prefab in sequence)
             {
-                var level = LevelGenerator.Generate(biome, seed: 42);
-                foreach (var r in level.Rooms)
-                {
-                    if (r.Template == null) continue;
-                    var prefab = r.Template.gameObject;
-                    var size = r.Template.Size;
-                    // 2-unit gap between rooms so adjacent walls don't perfectly overlap.
-                    var pos = new Vector3(r.GridPosition.x * (size.x + 2f), r.GridPosition.y * (size.y + 2f), 0f);
-                    var go = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
-                    go.transform.position = pos;
-                    rooms.Add(go);
-                }
-            }
-            catch (System.Exception e)
-            {
-                Debug.LogError($"[SmokeTestSetup] LevelGenerator threw — fallback layout: {e}");
-                rooms.Clear();
-                rooms.Add(InstantiateRoom(Vector3.zero));
+                var rt = prefab.GetComponent<RoomTemplate>();
+                var size = rt != null ? rt.Size : new Vector2(30f, 14f);
+                var halfW = size.x * 0.5f;
+
+                float cx = prevRightX <= -1e6f ? halfW : prevRightX + halfW;
+
+                var go = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+                go.transform.position = new Vector3(cx, 0f, 0f);
+                rooms.Add(go);
+
+                prevRightX = cx + halfW;
             }
             return rooms;
         }
@@ -368,8 +375,8 @@ namespace GunSlugsClone.EditorTools
             SetPrivateField(spawner, "delayBetweenWaves", 1.5f);
         }
 
-        private static void EnsureRoomHallwayPrefab() => AuthorRoomTemplate(RoomHallwayPath, "room_hallway", new Vector2(20f, 14f), enemyAnchors: 2, hostageAnchors: 1);
-        private static void EnsureRoomBossArenaPrefab() => AuthorRoomTemplate(RoomBossArenaPath, "room_boss", new Vector2(40f, 18f), enemyAnchors: 4, hostageAnchors: 0);
+        private static void EnsureRoomHallwayPrefab()    => AuthorRoomTemplate(RoomHallwayPath,   "room_hallway", new Vector2(20f, 14f), enemyAnchors: 2, hostageAnchors: 1);
+        private static void EnsureRoomBossArenaPrefab() => AuthorRoomTemplate(RoomBossArenaPath, "room_boss",    new Vector2(40f, 14f), enemyAnchors: 4, hostageAnchors: 0);
 
         private static void AuthorRoomTemplate(string path, string id, Vector2 worldSize, int enemyAnchors, int hostageAnchors)
         {
@@ -1336,10 +1343,31 @@ namespace GunSlugsClone.EditorTools
             }
         }
 
-        private static void CreateBackground()
+        private static void CreateBackgroundForLevel(List<GameObject> rooms)
         {
+            // Compute the X bounds of the laid-out rooms so the background
+            // covers them with margin on each side.
+            float minX = -50f, maxX = 50f;
+            if (rooms.Count > 0)
+            {
+                minX = float.MaxValue;
+                maxX = float.MinValue;
+                foreach (var r in rooms)
+                {
+                    if (r == null) continue;
+                    var rt = r.GetComponent<RoomTemplate>();
+                    var size = rt != null ? rt.Size : new Vector2(30f, 14f);
+                    var pos = r.transform.position;
+                    minX = Mathf.Min(minX, pos.x - size.x * 0.5f);
+                    maxX = Mathf.Max(maxX, pos.x + size.x * 0.5f);
+                }
+            }
+            var centerX = (minX + maxX) * 0.5f;
+            var width = (maxX - minX) + 80f; // 40 of margin each side
+            var height = 40f;
+
             var go = new GameObject("Background");
-            go.transform.position = new Vector3(0f, 0f, 0f);
+            go.transform.position = new Vector3(centerX, 0f, 0f);
             var sr = go.AddComponent<SpriteRenderer>();
             sr.sortingOrder = -50;
             var bg = LoadKenneySprite("tile_bg.png");
@@ -1348,12 +1376,11 @@ namespace GunSlugsClone.EditorTools
                 sr.sprite = bg;
                 sr.drawMode = SpriteDrawMode.Tiled;
                 sr.tileMode = SpriteTileMode.Continuous;
-                // 3 rooms × 30 wide + 30 of margin each side = 150 wide; 30 tall
-                sr.size = new Vector2(150f, 30f);
+                sr.size = new Vector2(width, height);
             }
             else
             {
-                go.transform.localScale = new Vector3(150f, 30f, 1f);
+                go.transform.localScale = new Vector3(width, height, 1f);
                 var ps = go.AddComponent<ProceduralSquare>();
                 SetSerializedColor(ps, new Color(0.10f, 0.16f, 0.24f));
             }
