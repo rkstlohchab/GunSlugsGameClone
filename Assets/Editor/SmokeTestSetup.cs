@@ -144,7 +144,7 @@ namespace GunSlugsClone.EditorTools
             go.transform.position = new Vector3(0, 0, -10);
             var cam = go.AddComponent<Camera>();
             cam.orthographic = true;
-            cam.orthographicSize = 5f;
+            cam.orthographicSize = 9f;
             cam.clearFlags = CameraClearFlags.SolidColor;
             cam.backgroundColor = new Color(0.10f, 0.12f, 0.16f, 1f);
             go.AddComponent<AudioListener>();
