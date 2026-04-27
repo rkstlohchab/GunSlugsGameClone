@@ -59,26 +59,41 @@ namespace GunSlugsClone.EditorTools
 
         private static Sprite EnsureWhiteSprite()
         {
-            var existing = AssetDatabase.LoadAssetAtPath<Sprite>(SpritePath);
-            if (existing != null) return existing;
+            // Always (re)write + (re)import. Cheap, and avoids the case where the
+            // PNG exists on disk but its sprite sub-asset never finished importing.
+            if (!File.Exists(SpritePath))
+            {
+                var tex = new Texture2D(4, 4, TextureFormat.RGBA32, false);
+                var pixels = new Color32[16];
+                for (var i = 0; i < pixels.Length; i++) pixels[i] = new Color32(255, 255, 255, 255);
+                tex.SetPixels32(pixels);
+                tex.Apply();
+                File.WriteAllBytes(SpritePath, tex.EncodeToPNG());
+                Object.DestroyImmediate(tex);
+                AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+            }
 
-            var tex = new Texture2D(4, 4, TextureFormat.RGBA32, false);
-            var pixels = new Color32[16];
-            for (var i = 0; i < pixels.Length; i++) pixels[i] = new Color32(255, 255, 255, 255);
-            tex.SetPixels32(pixels);
-            tex.Apply();
-            File.WriteAllBytes(SpritePath, tex.EncodeToPNG());
-            Object.DestroyImmediate(tex);
+            var importer = AssetImporter.GetAtPath(SpritePath) as TextureImporter;
+            if (importer != null && importer.textureType != TextureImporterType.Sprite)
+            {
+                importer.textureType = TextureImporterType.Sprite;
+                importer.spriteImportMode = SpriteImportMode.Single;
+                importer.spritePixelsPerUnit = 4f; // 4x4 sprite = 1 world unit
+                importer.filterMode = FilterMode.Point;
+                importer.mipmapEnabled = false;
+                importer.SaveAndReimport();
+                AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+            }
 
-            AssetDatabase.ImportAsset(SpritePath, ImportAssetOptions.ForceSynchronousImport);
-            var importer = (TextureImporter)AssetImporter.GetAtPath(SpritePath);
-            importer.textureType = TextureImporterType.Sprite;
-            importer.spritePixelsPerUnit = 4f; // 4x4 sprite = 1 world unit
-            importer.filterMode = FilterMode.Point;
-            importer.mipmapEnabled = false;
-            importer.SaveAndReimport();
+            // Sub-asset may take a frame to materialise; scan all assets at the path.
+            var sprite = AssetDatabase.LoadAssetAtPath<Sprite>(SpritePath);
+            if (sprite != null) return sprite;
+            foreach (var obj in AssetDatabase.LoadAllAssetsAtPath(SpritePath))
+                if (obj is Sprite s) return s;
 
-            return AssetDatabase.LoadAssetAtPath<Sprite>(SpritePath);
+            Debug.LogWarning("[SmokeTestSetup] White sprite not yet imported. Renderers will be invisible " +
+                             "but collision will still work. Run 'Build Smoke Test Scene' once more to bind it.");
+            return null;
         }
 
         private static UnityEngine.SceneManagement.Scene OpenOrCreateScene()
@@ -117,7 +132,9 @@ namespace GunSlugsClone.EditorTools
             var sr = go.AddComponent<SpriteRenderer>();
             sr.sprite = sprite;
             sr.color = new Color(0.42f, 0.70f, 0.34f);
-            go.AddComponent<BoxCollider2D>();
+            // Explicit size so collision works even if the sprite is still importing.
+            var col = go.AddComponent<BoxCollider2D>();
+            col.size = new Vector2(1f, 1f);
         }
 
         private static GameObject CreatePlayer(Sprite sprite)
@@ -136,7 +153,8 @@ namespace GunSlugsClone.EditorTools
             rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
             rb.interpolation = RigidbodyInterpolation2D.Interpolate;
 
-            go.AddComponent<BoxCollider2D>();
+            var col = go.AddComponent<BoxCollider2D>();
+            col.size = new Vector2(1f, 1f); // explicit, sprite-independent
             go.AddComponent<PlayerHealth>();
             go.AddComponent<WeaponHolder>();
             var ctrl = go.AddComponent<PlayerController>();
