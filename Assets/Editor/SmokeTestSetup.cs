@@ -6,6 +6,7 @@ using GunSlugsClone.Enemies;
 using GunSlugsClone.Enemies.AI;
 using GunSlugsClone.Player;
 using GunSlugsClone.Procedural;
+using GunSlugsClone.UI;
 using GunSlugsClone.Weapons;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -1138,7 +1139,7 @@ namespace GunSlugsClone.EditorTools
         private static void CreateTouchControlsCanvas()
         {
             // EventSystem (skip if one already exists in the scene).
-            if (FindFirstObjectByType<EventSystem>() == null)
+            if (Object.FindFirstObjectByType<EventSystem>() == null)
             {
                 var es = new GameObject("EventSystem");
                 es.AddComponent<EventSystem>();
