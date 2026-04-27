@@ -40,7 +40,7 @@ namespace GunSlugsClone.EditorTools
             ("Tiles/Characters/tile_0000.png", "character_player.png", 24),
             ("Tiles/Characters/tile_0024.png", "character_enemy.png",  24),
             ("Tiles/tile_0006.png",            "tile_floor.png",       18),
-            ("Tiles/tile_0046.png",            "tile_wall.png",        18),
+            ("Tiles/tile_0021.png",            "tile_wall.png",        18),
         };
 
         [MenuItem("GunSlugs/Build Smoke Test Scene")]
@@ -200,6 +200,11 @@ namespace GunSlugsClone.EditorTools
             if (playerSprite != null)
             {
                 sr.sprite = playerSprite;
+                // Kenney pixel-platformer characters face LEFT in their source PNG.
+                // Pre-flipping so the default forward (idle) is right; PlayerController
+                // multiplies localScale.x by facing, which then mirrors correctly on
+                // left-movement.
+                sr.flipX = true;
             }
             else
             {
@@ -490,6 +495,7 @@ namespace GunSlugsClone.EditorTools
                 if (enemySprite != null)
                 {
                     sr.sprite = enemySprite;
+                    sr.flipX = true; // same default-faces-left correction as the player
                 }
                 else
                 {

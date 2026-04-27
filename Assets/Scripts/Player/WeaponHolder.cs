@@ -13,6 +13,10 @@ namespace GunSlugsClone.Player
         [SerializeField] private List<WeaponData> startingLoadout = new();
         [SerializeField] private int maxCarried = 3;
 
+        [Header("Aim Assist")]
+        [SerializeField] private bool aimAssist = true;
+        [SerializeField] private float aimAssistRange = 12f;
+
         private readonly List<WeaponBase> _weapons = new();
         private int _activeIndex;
         private bool _triggerHeld;
@@ -32,12 +36,7 @@ namespace GunSlugsClone.Player
         private void Update()
         {
             if (Active == null) return;
-            // Muzzle position is computed from the player's world position +
-            // aim direction, NOT from the muzzle Transform's localPosition.
-            // Otherwise the muzzle inherits the player root's localScale.x flip
-            // (which flips with movement facing, not aim) and bullets spawn on
-            // the wrong side when the player faces away from the cursor.
-            var dir = _aim.sqrMagnitude > 0.0001f ? _aim.normalized : Vector2.right;
+            var dir = ResolveAimDirection();
             var origin = transform.position + (Vector3)(dir * muzzleOffset);
             if (muzzle != null) muzzle.position = origin; // keep the Transform in sync for visuals
             Active.UpdateAim(origin, dir);
@@ -49,6 +48,37 @@ namespace GunSlugsClone.Player
                 : _triggerHeld;
             if (fire) Active.TryFire();
             _triggerJustPressed = false;
+        }
+
+        // Muzzle direction is computed in world space from the player's position +
+        // aim direction (NOT from the muzzle Transform's localPosition) so
+        // bullets always spawn on the side the player is aiming, regardless of
+        // the player root's localScale.x flip.
+        //
+        // When aim-assist is enabled and a damageable target lives within range,
+        // override the cursor direction to point straight at it. Lets the user
+        // test combat without sweating the trackpad cursor every shot.
+        private Vector2 ResolveAimDirection()
+        {
+            var raw = _aim.sqrMagnitude > 0.0001f ? _aim.normalized : Vector2.right;
+            if (!aimAssist) return raw;
+
+            var hits = Physics2D.OverlapCircleAll(transform.position, aimAssistRange);
+            Transform best = null;
+            var bestSqr = float.MaxValue;
+            for (var i = 0; i < hits.Length; i++)
+            {
+                var hit = hits[i];
+                if (hit == null) continue;
+                if (hit.transform == transform || hit.transform.IsChildOf(transform)) continue;
+                if (!hit.TryGetComponent<IDamageable>(out _)) continue;
+                var d = ((Vector2)(hit.transform.position - transform.position)).sqrMagnitude;
+                if (d < bestSqr) { bestSqr = d; best = hit.transform; }
+            }
+            if (best == null) return raw;
+
+            var delta = (Vector2)(best.position - transform.position);
+            return delta.sqrMagnitude > 0.0001f ? delta.normalized : raw;
         }
 
         public void SetTriggerHeld(bool held)
