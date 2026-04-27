@@ -170,6 +170,7 @@ namespace GunSlugsClone.EditorTools
             // resize silently doesn't). Reflection writes the C# field directly, then
             // EditorUtility.SetDirty marks the component for save.
             SetPrivateField(ctrl, "groundCheck", groundCheck.transform);
+            SetPrivateField(ctrl, "extraJumps", 1); // single jump + 1 double-jump
             SetPrivateField(weaponHolder, "muzzle", muzzle.transform);
             if (pistol != null)
                 SetPrivateField(weaponHolder, "startingLoadout", new List<WeaponData> { pistol });

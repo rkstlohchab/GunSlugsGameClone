@@ -129,8 +129,7 @@ namespace GunSlugsClone.Player
         private void UpdateGround()
         {
             var wasGrounded = _isGrounded;
-            _isGrounded = groundCheck != null
-                && Physics2D.OverlapCircle(groundCheck.position, groundCheckRadius, groundMask);
+            _isGrounded = ProbeGround();
             if (_isGrounded)
             {
                 _coyoteTimer = coyoteTime;
@@ -141,6 +140,27 @@ namespace GunSlugsClone.Player
                 _coyoteTimer = coyoteTime;
             }
             else if (_coyoteTimer > 0f) _coyoteTimer -= Time.deltaTime;
+        }
+
+        private static readonly Collider2D[] _groundProbeBuffer = new Collider2D[8];
+
+        private bool ProbeGround()
+        {
+            if (groundCheck == null) return false;
+            // OverlapCircle alone returns the player's own collider when the ground-check
+            // point sits inside it (radius >= 0.15 with bottom edge at -0.5 overlaps
+            // the player's BoxCollider2D), so _isGrounded would stay true mid-air and
+            // the player could jump forever. Filter out self + children explicitly.
+            var count = Physics2D.OverlapCircleNonAlloc(groundCheck.position, groundCheckRadius, _groundProbeBuffer, groundMask);
+            for (var i = 0; i < count; i++)
+            {
+                var hit = _groundProbeBuffer[i];
+                if (hit == null) continue;
+                if (hit.transform == transform) continue;
+                if (hit.transform.IsChildOf(transform)) continue;
+                return true;
+            }
+            return false;
         }
 
         private void HandleJump()
