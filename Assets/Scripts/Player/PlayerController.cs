@@ -58,38 +58,36 @@ namespace GunSlugsClone.Player
 
         private void OnEnable() => EventBus.Publish(new PlayerSpawnedEvent(playerIndex));
 
-        public void OnMove(InputAction.CallbackContext ctx) => _moveInput = ctx.ReadValue<Vector2>();
-        public void OnAim(InputAction.CallbackContext ctx) => _aimInput = ctx.ReadValue<Vector2>();
+        // Input System SendMessages convention: PlayerInput broadcasts On<ActionName>(InputValue)
+        // when its Behavior is set to "Send Messages". Keeps wiring zero-click in the Editor.
+        public void OnMove(InputValue v) => _moveInput = v.Get<Vector2>();
+        public void OnAim(InputValue v) => _aimInput = v.Get<Vector2>();
 
-        public void OnJump(InputAction.CallbackContext ctx)
+        public void OnJump(InputValue v)
         {
-            if (ctx.performed) _jumpBufferTimer = jumpBuffer;
-            _jumpHeld = ctx.ReadValueAsButton();
+            if (v.isPressed) _jumpBufferTimer = jumpBuffer;
+            _jumpHeld = v.isPressed;
         }
 
-        public void OnFire(InputAction.CallbackContext ctx)
-        {
-            if (ctx.performed) _weapon.SetTriggerHeld(true);
-            else if (ctx.canceled) _weapon.SetTriggerHeld(false);
-        }
+        public void OnFire(InputValue v) => _weapon.SetTriggerHeld(v.isPressed);
 
-        public void OnDash(InputAction.CallbackContext ctx)
+        public void OnDash(InputValue v)
         {
-            if (!ctx.performed || !dashEnabled || _dashCdTimer > 0f) return;
+            if (!v.isPressed || !dashEnabled || _dashCdTimer > 0f) return;
             _dashDir = _moveInput.sqrMagnitude > 0.01f ? _moveInput.normalized : new Vector2(_facing, 0);
             _dashTimer = dashDuration;
             _dashCdTimer = dashCooldown;
             _health.SetInvulnerable(dashDuration);
         }
 
-        public void OnSwapWeapon(InputAction.CallbackContext ctx)
+        public void OnSwapWeapon(InputValue v)
         {
-            if (ctx.performed) _weapon.SwapToNext();
+            if (v.isPressed) _weapon.SwapToNext();
         }
 
-        public void OnPause(InputAction.CallbackContext ctx)
+        public void OnPause(InputValue v)
         {
-            if (!ctx.performed) return;
+            if (!v.isPressed) return;
             var gm = GameManager.Instance;
             if (gm == null) return;
             if (gm.State == GameState.Playing) gm.Pause();
