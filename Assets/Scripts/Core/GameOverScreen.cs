@@ -18,7 +18,11 @@ namespace GunSlugsClone.Core
 
         private OverlayState _overlay = OverlayState.None;
         private int _score;
+        private int _hostagesRescued;
+        [SerializeField] private int hostagesTotal;
         private WaveSpawner _waveSpawner;
+
+        public void SetHostagesTotal(int total) => hostagesTotal = total;
 
         private GUIStyle _titleStyle;
         private GUIStyle _hudLeft;
@@ -30,6 +34,7 @@ namespace GunSlugsClone.Core
             EventBus.Subscribe<PlayerDiedEvent>(OnDied);
             EventBus.Subscribe<EnemyKilledEvent>(OnKilled);
             EventBus.Subscribe<AllWavesClearedEvent>(OnVictory);
+            EventBus.Subscribe<HostageRescuedEvent>(OnHostageRescued);
         }
 
         private void OnDisable()
@@ -37,13 +42,21 @@ namespace GunSlugsClone.Core
             EventBus.Unsubscribe<PlayerDiedEvent>(OnDied);
             EventBus.Unsubscribe<EnemyKilledEvent>(OnKilled);
             EventBus.Unsubscribe<AllWavesClearedEvent>(OnVictory);
+            EventBus.Unsubscribe<HostageRescuedEvent>(OnHostageRescued);
         }
 
         private void Start()
         {
-            // FindFirstObjectByType is fine here — a single WaveSpawner is in the
-            // scene and we only resolve it once at scene start.
             _waveSpawner = FindFirstObjectByType<WaveSpawner>();
+            // hostagesTotal is wired at scene-build time via SetHostagesTotal
+            // (Core asmdef can't reference Player to count Hostage components
+            // directly, and a static counter would persist across scene loads).
+        }
+
+        private void OnHostageRescued(HostageRescuedEvent e)
+        {
+            _score += e.ScoreReward;
+            _hostagesRescued++;
         }
 
         private void Update()
@@ -85,10 +98,12 @@ namespace GunSlugsClone.Core
             var w = Screen.width;
             var h = Screen.height;
 
-            // Always-visible HUD: score top-left, wave below.
+            // Always-visible HUD: score, wave, hostages stack top-left.
             GUI.Label(new Rect(20, 20, 320, 40), $"Score: {_score}", _hudLeft);
             if (_waveSpawner != null)
                 GUI.Label(new Rect(20, 56, 320, 30), $"Wave: {_waveSpawner.CurrentWave} / {_waveSpawner.TotalWaves}", _hudLeft);
+            if (hostagesTotal > 0)
+                GUI.Label(new Rect(20, 84, 320, 30), $"Hostages: {_hostagesRescued} / {hostagesTotal}", _hudLeft);
 
             if (_overlay == OverlayState.None) return;
 

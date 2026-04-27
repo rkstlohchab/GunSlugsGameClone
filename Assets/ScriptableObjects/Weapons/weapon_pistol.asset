@@ -29,7 +29,7 @@ MonoBehaviour:
   ReloadSeconds: 1
   BurstCount: 1
   BurstInterval: 0
-  ProjectilePrefab: {fileID: 3391747300374658037, guid: b1bb4dbf8658940b2959f09c1eededb4, type: 3}
-  MuzzleFlashPrefab: {fileID: 478448550023130995, guid: cda8a21298f12430f9a7910fccdfaf17, type: 3}
+  ProjectilePrefab: {fileID: 1959636619839469608, guid: b1bb4dbf8658940b2959f09c1eededb4, type: 3}
+  MuzzleFlashPrefab: {fileID: 7670436433156909510, guid: cda8a21298f12430f9a7910fccdfaf17, type: 3}
   FireSfx: {fileID: 0}
   ReloadSfx: {fileID: 0}

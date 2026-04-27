@@ -13,6 +13,7 @@ namespace GunSlugsClone.Procedural
         [SerializeField] private Vector2 size = new(20f, 12f);
         [SerializeField] private List<DoorSocket> doors = new();
         [SerializeField] private List<Transform> enemySpawns = new();
+        [SerializeField] private List<Transform> hostageSpawns = new();
         [SerializeField] private List<Transform> pickupSpawns = new();
         [SerializeField] private Transform playerSpawn;
 
@@ -21,6 +22,7 @@ namespace GunSlugsClone.Procedural
         public Vector2 Size => size;
         public IReadOnlyList<DoorSocket> Doors => doors;
         public IReadOnlyList<Transform> EnemySpawns => enemySpawns;
+        public IReadOnlyList<Transform> HostageSpawns => hostageSpawns;
         public IReadOnlyList<Transform> PickupSpawns => pickupSpawns;
         public Transform PlayerSpawn => playerSpawn;
 

@@ -10,22 +10,22 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b0f706c80733e4488ab3fc7103d85236, type: 3}
-  m_Name: enemy_grunt
+  m_Name: enemy_boss
   m_EditorClassIdentifier: GunSlugsClone.Enemies::GunSlugsClone.Enemies.EnemyData
-  Id: enemy_grunt
-  DisplayName: Grunt
-  Archetype: 0
-  MaxHealth: 20
-  MoveSpeed: 2.5
-  AggroRange: 8
-  AttackRange: 1.2
-  AttackCooldown: 1
-  ContactDamage: 1
-  ScoreOnKill: 10
+  Id: enemy_boss
+  DisplayName: Boss
+  Archetype: 8
+  MaxHealth: 100
+  MoveSpeed: 1.6
+  AggroRange: 16
+  AttackRange: 1.5
+  AttackCooldown: 0.7
+  ContactDamage: 2
+  ScoreOnKill: 200
   HealthDropChance: 0.05
   AmmoDropChance: 0.15
   CurrencyDropChance: 0.5
   CurrencyDropAmount: 1
-  Prefab: {fileID: 34053492355689759, guid: 6034d2fabbee840749bdd893b0ad7605, type: 3}
+  Prefab: {fileID: 5699546889359261936, guid: 38666e3f3e5e94d6d951f326104d058f, type: 3}
   HitSfx: {fileID: 0}
   DeathSfx: {fileID: 0}

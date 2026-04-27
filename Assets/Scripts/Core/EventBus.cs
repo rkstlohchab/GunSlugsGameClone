@@ -44,5 +44,6 @@ namespace GunSlugsClone.Core
     public readonly struct RunCompletedEvent { public readonly int FinalScore; public readonly float DurationSeconds; public RunCompletedEvent(int s, float d) { FinalScore = s; DurationSeconds = d; } }
     public readonly struct AllWavesClearedEvent { public readonly int WaveCount; public AllWavesClearedEvent(int c) { WaveCount = c; } }
     public readonly struct PauseToggledEvent { public readonly bool IsPaused; public PauseToggledEvent(bool p) { IsPaused = p; } }
+    public readonly struct HostageRescuedEvent { public readonly int ScoreReward; public readonly UnityEngine.Vector3 Position; public HostageRescuedEvent(int s, UnityEngine.Vector3 p) { ScoreReward = s; Position = p; } }
     public readonly struct CurrencyChangedEvent { public readonly int NewTotal; public readonly int Delta; public CurrencyChangedEvent(int t, int d) { NewTotal = t; Delta = d; } }
 }
