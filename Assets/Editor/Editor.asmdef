@@ -5,6 +5,7 @@
         "GunSlugsClone.Core",
         "GunSlugsClone.Player",
         "GunSlugsClone.Weapons",
+        "GunSlugsClone.Enemies",
         "Unity.InputSystem"
     ],
     "includePlatforms": [

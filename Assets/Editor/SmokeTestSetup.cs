@@ -2,6 +2,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using GunSlugsClone.Core;
+using GunSlugsClone.Enemies;
+using GunSlugsClone.Enemies.AI;
 using GunSlugsClone.Player;
 using GunSlugsClone.Weapons;
 using UnityEditor;
@@ -23,6 +25,8 @@ namespace GunSlugsClone.EditorTools
         private const string InputActionsPath = "Assets/Settings/InputSystem_Actions.inputactions";
         private const string BulletPrefabPath = "Assets/Prefabs/Bullet.prefab";
         private const string PistolAssetPath  = "Assets/ScriptableObjects/Weapons/weapon_pistol.asset";
+        private const string EnemyDataPath   = "Assets/ScriptableObjects/Enemies/enemy_grunt.asset";
+        private const string EnemyPrefabPath  = "Assets/Prefabs/Enemy_Grunt.prefab";
 
         [MenuItem("GunSlugs/Build Smoke Test Scene")]
         public static void Build()
@@ -39,6 +43,7 @@ namespace GunSlugsClone.EditorTools
             EnsureFolder("Assets/Scenes");
             EnsureBulletPrefab();
             EnsurePistolAsset();
+            EnsureEnemyAssets();
 
             var scene = OpenOrCreateScene();
             ClearScene(scene);
@@ -47,6 +52,7 @@ namespace GunSlugsClone.EditorTools
             CreateGround();
             var player = CreatePlayer();
             WirePlayerInput(player);
+            SpawnEnemy(player);
 
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene, ScenePath);
@@ -165,15 +171,22 @@ namespace GunSlugsClone.EditorTools
 
         private static void SetPrivateField(object target, string fieldName, object value)
         {
-            var field = target.GetType().GetField(
-                fieldName,
-                BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
-            if (field == null)
+            // Walk the inheritance chain so protected fields on a base class
+            // (e.g. EnemyBase.data when target is GroundGruntAI) resolve.
+            var type = target.GetType();
+            while (type != null)
             {
-                Debug.LogWarning($"[SmokeTestSetup] Field '{fieldName}' not found on {target.GetType().Name}");
-                return;
+                var field = type.GetField(
+                    fieldName,
+                    BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+                if (field != null)
+                {
+                    field.SetValue(target, value);
+                    return;
+                }
+                type = type.BaseType;
             }
-            field.SetValue(target, value);
+            Debug.LogWarning($"[SmokeTestSetup] Field '{fieldName}' not found on {target.GetType().Name} or any base type");
         }
 
         private static GameObject EnsureBulletPrefab()
@@ -262,6 +275,99 @@ namespace GunSlugsClone.EditorTools
             {
                 Debug.LogError($"[SmokeTestSetup] EnsurePistolAsset threw: {e}");
             }
+        }
+
+        private static void EnsureEnemyAssets()
+        {
+            try
+            {
+                EnsureFolder("Assets/ScriptableObjects");
+                EnsureFolder("Assets/ScriptableObjects/Enemies");
+                EnsureFolder("Assets/Prefabs");
+
+                if (AssetDatabase.LoadMainAssetAtPath(EnemyDataPath) != null)
+                    AssetDatabase.DeleteAsset(EnemyDataPath);
+                if (AssetDatabase.LoadMainAssetAtPath(EnemyPrefabPath) != null)
+                    AssetDatabase.DeleteAsset(EnemyPrefabPath);
+
+                var dataInstance = ScriptableObject.CreateInstance<EnemyData>();
+                AssetDatabase.CreateAsset(dataInstance, EnemyDataPath);
+                AssetDatabase.SaveAssets();
+                AssetDatabase.Refresh();
+
+                var enemyData = AssetDatabase.LoadAssetAtPath<EnemyData>(EnemyDataPath);
+                if (enemyData == null)
+                {
+                    Debug.LogError($"[SmokeTestSetup] LoadAssetAtPath returned null after CreateAsset for {EnemyDataPath}");
+                    return;
+                }
+
+                SetPrivateField(enemyData, "Id", "enemy_grunt");
+                SetPrivateField(enemyData, "DisplayName", "Grunt");
+                SetPrivateField(enemyData, "Archetype", EnemyArchetype.Grunt);
+                SetPrivateField(enemyData, "MaxHealth", 20);
+                SetPrivateField(enemyData, "MoveSpeed", 2.5f);
+                SetPrivateField(enemyData, "AggroRange", 8f);
+                SetPrivateField(enemyData, "AttackRange", 1.2f);
+                SetPrivateField(enemyData, "AttackCooldown", 1.0f);
+                SetPrivateField(enemyData, "ContactDamage", 1);
+                SetPrivateField(enemyData, "ScoreOnKill", 10);
+                EditorUtility.SetDirty(enemyData);
+                AssetDatabase.SaveAssets();
+
+                // Build prefab
+                var go = new GameObject("Enemy_Grunt");
+                var sr = go.AddComponent<SpriteRenderer>();
+                sr.sortingOrder = 1;
+                var ps = go.AddComponent<ProceduralSquare>();
+                SetSerializedColor(ps, new Color(0.9f, 0.25f, 0.25f));
+
+                var rb = go.AddComponent<Rigidbody2D>();
+                rb.gravityScale = 3.5f;
+                rb.freezeRotation = true;
+                rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+
+                var col = go.AddComponent<BoxCollider2D>();
+                col.size = new Vector2(1f, 1f);
+
+                var ai = go.AddComponent<GroundGruntAI>();
+                SetPrivateField(ai, "data", enemyData);
+                SetPrivateField(ai, "flashRenderer", sr);
+                SetPrivateField(ai, "patrolDistance", 3f);
+                SetPrivateField(ai, "groundMask", (LayerMask)1); // Default layer
+
+                var edgeCheck = new GameObject("EdgeCheck");
+                edgeCheck.transform.SetParent(go.transform, worldPositionStays: false);
+                edgeCheck.transform.localPosition = new Vector3(0.6f, -0.6f, 0);
+                SetPrivateField(ai, "edgeCheck", edgeCheck.transform);
+
+                var prefab = PrefabUtility.SaveAsPrefabAsset(go, EnemyPrefabPath);
+                Object.DestroyImmediate(go);
+
+                // Wire prefab back into the EnemyData (closes the loop)
+                var prefabAsset = AssetDatabase.LoadAssetAtPath<GameObject>(EnemyPrefabPath);
+                SetPrivateField(enemyData, "Prefab", prefabAsset);
+                EditorUtility.SetDirty(enemyData);
+                AssetDatabase.SaveAssets();
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[SmokeTestSetup] EnsureEnemyAssets threw: {e}");
+            }
+        }
+
+        private static void SpawnEnemy(GameObject player)
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(EnemyPrefabPath);
+            if (prefab == null)
+            {
+                Debug.LogError($"[SmokeTestSetup] Enemy prefab missing at {EnemyPrefabPath}");
+                return;
+            }
+            var enemy = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+            enemy.transform.position = new Vector3(5, 0, 0);
+            if (enemy.TryGetComponent<EnemyBase>(out var eb))
+                eb.SetTarget(player.transform);
         }
 
         private static void WirePlayerInput(GameObject player)
