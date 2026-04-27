@@ -719,9 +719,17 @@ namespace GunSlugsClone.EditorTools
                 rb.interpolation = RigidbodyInterpolation2D.Interpolate;
                 rb.freezeRotation = true;
 
-                var col = go.AddComponent<CircleCollider2D>();
-                col.isTrigger = true;
-                col.radius = 0.5f;
+                // Two-collider setup: a small solid collider catches floor/wall
+                // physics so the pickup actually lands instead of falling
+                // through, and a slightly larger trigger collider is what fires
+                // OnTriggerEnter2D in HealthPickup when the player touches it.
+                var solid = go.AddComponent<CircleCollider2D>();
+                solid.isTrigger = false;
+                solid.radius = 0.35f;
+
+                var pickupTrigger = go.AddComponent<CircleCollider2D>();
+                pickupTrigger.isTrigger = true;
+                pickupTrigger.radius = 0.6f;
 
                 go.AddComponent<HealthPickup>();
 
