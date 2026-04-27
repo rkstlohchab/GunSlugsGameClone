@@ -15,7 +15,6 @@ namespace GunSlugsClone.Core
         private static Sprite _sharedSprite;
 
         private void OnEnable() => Apply();
-        private void OnValidate() => Apply();
 
         private void Apply()
         {

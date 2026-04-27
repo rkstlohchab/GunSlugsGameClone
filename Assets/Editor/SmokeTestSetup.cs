@@ -1,6 +1,7 @@
 using System.IO;
 using GunSlugsClone.Core;
 using GunSlugsClone.Player;
+using GunSlugsClone.Weapons;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -18,6 +19,8 @@ namespace GunSlugsClone.EditorTools
     {
         private const string ScenePath        = "Assets/Scenes/SmokeTest.unity";
         private const string InputActionsPath = "Assets/Settings/InputSystem_Actions.inputactions";
+        private const string BulletPrefabPath = "Assets/Prefabs/Bullet.prefab";
+        private const string PistolAssetPath  = "Assets/ScriptableObjects/Weapons/weapon_pistol.asset";
 
         [MenuItem("GunSlugs/Build Smoke Test Scene")]
         public static void Build()
@@ -32,13 +35,15 @@ namespace GunSlugsClone.EditorTools
             }
 
             EnsureFolder("Assets/Scenes");
+            var bulletPrefab = EnsureBulletPrefab();
+            var pistolData   = EnsurePistolAsset(bulletPrefab);
 
             var scene = OpenOrCreateScene();
             ClearScene(scene);
 
             CreateCamera();
             CreateGround();
-            var player = CreatePlayer();
+            var player = CreatePlayer(pistolData);
             WirePlayerInput(player);
 
             EditorSceneManager.MarkSceneDirty(scene);
@@ -103,7 +108,7 @@ namespace GunSlugsClone.EditorTools
             col.size = new Vector2(1f, 1f);
         }
 
-        private static GameObject CreatePlayer()
+        private static GameObject CreatePlayer(WeaponData pistol)
         {
             var go = new GameObject("Player");
             go.transform.position = new Vector3(0, 0, 0);
@@ -123,23 +128,105 @@ namespace GunSlugsClone.EditorTools
             col.size = new Vector2(1f, 1f);
 
             go.AddComponent<PlayerHealth>();
-            go.AddComponent<WeaponHolder>();
+            var weaponHolder = go.AddComponent<WeaponHolder>();
             var ctrl = go.AddComponent<PlayerController>();
 
             var groundCheck = new GameObject("GroundCheck");
             groundCheck.transform.SetParent(go.transform, worldPositionStays: false);
             groundCheck.transform.localPosition = new Vector3(0, -0.5f, 0);
 
-            var so = new SerializedObject(ctrl);
-            var prop = so.FindProperty("groundCheck");
-            if (prop != null)
+            // Muzzle is offset outside the player's BoxCollider2D so spawned bullets
+            // don't immediately self-destruct from a contact with the player itself.
+            var muzzle = new GameObject("Muzzle");
+            muzzle.transform.SetParent(go.transform, worldPositionStays: false);
+            muzzle.transform.localPosition = new Vector3(0.8f, 0.05f, 0);
+
+            var ctrlSo = new SerializedObject(ctrl);
+            var groundProp = ctrlSo.FindProperty("groundCheck");
+            if (groundProp != null)
             {
-                prop.objectReferenceValue = groundCheck.transform;
-                so.ApplyModifiedPropertiesWithoutUndo();
+                groundProp.objectReferenceValue = groundCheck.transform;
+                ctrlSo.ApplyModifiedPropertiesWithoutUndo();
             }
             else Debug.LogWarning("[SmokeTestSetup] Could not find groundCheck SerializedProperty on PlayerController.");
 
+            var whSo = new SerializedObject(weaponHolder);
+            var muzzleProp = whSo.FindProperty("muzzle");
+            if (muzzleProp != null) muzzleProp.objectReferenceValue = muzzle.transform;
+            var loadout = whSo.FindProperty("startingLoadout");
+            if (loadout != null && pistol != null)
+            {
+                loadout.arraySize = 1;
+                loadout.GetArrayElementAtIndex(0).objectReferenceValue = pistol;
+            }
+            whSo.ApplyModifiedPropertiesWithoutUndo();
+
             return go;
+        }
+
+        private static GameObject EnsureBulletPrefab()
+        {
+            EnsureFolder("Assets/Prefabs");
+            var existing = AssetDatabase.LoadAssetAtPath<GameObject>(BulletPrefabPath);
+            if (existing != null) return existing;
+
+            var go = new GameObject("Bullet");
+            go.transform.localScale = new Vector3(0.25f, 0.25f, 1f);
+
+            go.AddComponent<SpriteRenderer>();
+            var ps = go.AddComponent<ProceduralSquare>();
+            SetSerializedColor(ps, new Color(1f, 0.85f, 0.30f));
+
+            var rb = go.AddComponent<Rigidbody2D>();
+            rb.gravityScale = 0f;
+            rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+            rb.interpolation = RigidbodyInterpolation2D.Interpolate;
+
+            var col = go.AddComponent<CircleCollider2D>();
+            col.isTrigger = true;
+            col.radius = 0.5f; // local; world radius = 0.125 with 0.25 scale
+
+            go.AddComponent<Projectile>();
+
+            var prefab = PrefabUtility.SaveAsPrefabAsset(go, BulletPrefabPath);
+            Object.DestroyImmediate(go);
+            return prefab;
+        }
+
+        private static WeaponData EnsurePistolAsset(GameObject bulletPrefab)
+        {
+            EnsureFolder("Assets/ScriptableObjects");
+            EnsureFolder("Assets/ScriptableObjects/Weapons");
+
+            var pistol = AssetDatabase.LoadAssetAtPath<WeaponData>(PistolAssetPath);
+            if (pistol == null)
+            {
+                pistol = ScriptableObject.CreateInstance<WeaponData>();
+                AssetDatabase.CreateAsset(pistol, PistolAssetPath);
+            }
+
+            var so = new SerializedObject(pistol);
+            so.FindProperty("Id").stringValue = "weapon_pistol";
+            so.FindProperty("DisplayName").stringValue = "Pistol";
+            so.FindProperty("Mode").enumValueIndex = (int)FireMode.SemiAuto;
+            so.FindProperty("Damage").intValue = 10;
+            so.FindProperty("FireRate").floatValue = 4f;
+            so.FindProperty("ProjectilesPerShot").intValue = 1;
+            so.FindProperty("SpreadDegrees").floatValue = 1f;
+            so.FindProperty("ProjectileSpeed").floatValue = 18f;
+            so.FindProperty("ProjectileLifetime").floatValue = 1.5f;
+            so.FindProperty("Knockback").floatValue = 1f;
+            so.FindProperty("Recoil").floatValue = 0f;
+            so.FindProperty("Infinite").boolValue = true;
+            so.FindProperty("MagazineSize").intValue = 12;
+            so.FindProperty("ReloadSeconds").floatValue = 1.0f;
+            so.FindProperty("BurstCount").intValue = 1;
+            so.FindProperty("BurstInterval").floatValue = 0f;
+            so.FindProperty("ProjectilePrefab").objectReferenceValue = bulletPrefab;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(pistol);
+            AssetDatabase.SaveAssets();
+            return pistol;
         }
 
         private static void WirePlayerInput(GameObject player)

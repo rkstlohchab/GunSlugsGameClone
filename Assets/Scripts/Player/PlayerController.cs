@@ -177,7 +177,25 @@ namespace GunSlugsClone.Player
 
         private void FeedAimToWeapon()
         {
-            var aim = _aimInput.sqrMagnitude > 0.01f ? _aimInput.normalized : new Vector2(_facing, 0);
+            Vector2 aim;
+            // Mouse position arrives in screen pixels (huge magnitude). Convert to a
+            // world direction relative to the player. Gamepad sticks already deliver
+            // a unit-vector direction (magnitude <= 1) so we can use them as-is.
+            if (_aimInput.sqrMagnitude > 4f && Camera.main != null)
+            {
+                var screen = new Vector3(_aimInput.x, _aimInput.y, -Camera.main.transform.position.z);
+                var world = Camera.main.ScreenToWorldPoint(screen);
+                var delta = (Vector2)(world - transform.position);
+                aim = delta.sqrMagnitude > 0.0001f ? delta.normalized : new Vector2(_facing, 0);
+            }
+            else if (_aimInput.sqrMagnitude > 0.01f)
+            {
+                aim = _aimInput.normalized;
+            }
+            else
+            {
+                aim = new Vector2(_facing, 0);
+            }
             _weapon.SetAimDirection(aim);
         }
 
