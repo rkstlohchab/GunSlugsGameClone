@@ -42,7 +42,7 @@ namespace GunSlugsClone.EditorTools
             ("Tiles/Characters/tile_0000.png", "character_player.png", 24),
             ("Tiles/Characters/tile_0024.png", "character_enemy.png",  24),
             ("Tiles/tile_0006.png",            "tile_floor.png",       18),
-            ("Tiles/tile_0020.png",            "tile_wall.png",        18),
+            ("Tiles/tile_0001.png",            "tile_wall.png",        18),
         };
 
         [MenuItem("GunSlugs/Build Smoke Test Scene")]
@@ -166,7 +166,7 @@ namespace GunSlugsClone.EditorTools
 
                 const float halfWidth = 15f;
                 const float halfHeight = 7f;
-                const float doorHalf = 2f; // door gap is 4 units tall, centered at room mid
+                const float doorHeight = 3f; // door gap height in world units
 
                 var floorSprite = LoadKenneySprite("tile_floor.png");
                 var wallSprite  = LoadKenneySprite("tile_wall.png");
@@ -177,23 +177,28 @@ namespace GunSlugsClone.EditorTools
                 SetPrivateField(rt, "biomeTag", "biome_starter");
                 SetPrivateField(rt, "size", new Vector2(halfWidth * 2f, halfHeight * 2f));
 
-                // Top + bottom slabs span the full width.
+                // Top + bottom slabs span the full width. Floor top edge is at
+                // y = -halfHeight + 0.5; the door gap starts there.
                 BuildSlab(room.transform, "Floor",   new Vector3(0f, -halfHeight, 0f), new Vector2(halfWidth * 2f, 1f), new Color(0.42f, 0.70f, 0.34f), floorSprite);
                 BuildSlab(room.transform, "Ceiling", new Vector3(0f,  halfHeight, 0f), new Vector2(halfWidth * 2f, 1f), new Color(0.25f, 0.28f, 0.32f), wallSprite);
 
-                // Side walls are split into top + bottom halves with a door gap in the middle.
-                var sideHalf = (halfHeight - doorHalf) * 0.5f;
-                BuildSlab(room.transform, "WallLeftTop",     new Vector3(-halfWidth,  doorHalf + sideHalf, 0f), new Vector2(1f, sideHalf * 2f), new Color(0.25f, 0.28f, 0.32f), wallSprite);
-                BuildSlab(room.transform, "WallLeftBottom",  new Vector3(-halfWidth, -doorHalf - sideHalf, 0f), new Vector2(1f, sideHalf * 2f), new Color(0.25f, 0.28f, 0.32f), wallSprite);
-                BuildSlab(room.transform, "WallRightTop",    new Vector3( halfWidth,  doorHalf + sideHalf, 0f), new Vector2(1f, sideHalf * 2f), new Color(0.25f, 0.28f, 0.32f), wallSprite);
-                BuildSlab(room.transform, "WallRightBottom", new Vector3( halfWidth, -doorHalf - sideHalf, 0f), new Vector2(1f, sideHalf * 2f), new Color(0.25f, 0.28f, 0.32f), wallSprite);
+                // Side walls cover from doorTop to the ceiling. Door starts at
+                // floor top so the player walks straight through at ground level.
+                var floorTop = -halfHeight + 0.5f;
+                var doorTop = floorTop + doorHeight;          // top of the door gap
+                var ceilingBottom = halfHeight - 0.5f;
+                var wallHeight = ceilingBottom - doorTop;
+                var wallY = (doorTop + ceilingBottom) * 0.5f;
+                BuildSlab(room.transform, "WallLeft",  new Vector3(-halfWidth, wallY, 0f), new Vector2(1f, wallHeight), new Color(0.25f, 0.28f, 0.32f), wallSprite);
+                BuildSlab(room.transform, "WallRight", new Vector3( halfWidth, wallY, 0f), new Vector2(1f, wallHeight), new Color(0.25f, 0.28f, 0.32f), wallSprite);
 
-                // Door sockets — purely metadata for now; LevelGenerator uses
-                // them later to stitch rooms together.
+                // Door sockets sit at the door midpoint — metadata for
+                // LevelGenerator's later stitching pass.
+                var doorMidY = (floorTop + doorTop) * 0.5f;
                 var doors = new List<DoorSocket>
                 {
-                    AddDoorSocket(room.transform, "DoorEast", new Vector3( halfWidth, 0f, 0f), DoorDirection.East),
-                    AddDoorSocket(room.transform, "DoorWest", new Vector3(-halfWidth, 0f, 0f), DoorDirection.West),
+                    AddDoorSocket(room.transform, "DoorEast", new Vector3( halfWidth, doorMidY, 0f), DoorDirection.East),
+                    AddDoorSocket(room.transform, "DoorWest", new Vector3(-halfWidth, doorMidY, 0f), DoorDirection.West),
                 };
                 SetPrivateField(rt, "doors", doors);
 
