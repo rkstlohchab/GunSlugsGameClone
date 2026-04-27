@@ -203,38 +203,51 @@ namespace GunSlugsClone.EditorTools
 
         private static WeaponData EnsurePistolAsset(GameObject bulletPrefab)
         {
-            EnsureFolder("Assets/ScriptableObjects");
-            EnsureFolder("Assets/ScriptableObjects/Weapons");
-
-            var pistol = AssetDatabase.LoadAssetAtPath<WeaponData>(PistolAssetPath);
-            if (pistol == null)
+            try
             {
-                pistol = ScriptableObject.CreateInstance<WeaponData>();
-                AssetDatabase.CreateAsset(pistol, PistolAssetPath);
-            }
+                EnsureFolder("Assets/ScriptableObjects");
+                EnsureFolder("Assets/ScriptableObjects/Weapons");
 
-            var so = new SerializedObject(pistol);
-            so.FindProperty("Id").stringValue = "weapon_pistol";
-            so.FindProperty("DisplayName").stringValue = "Pistol";
-            so.FindProperty("Mode").enumValueIndex = (int)FireMode.SemiAuto;
-            so.FindProperty("Damage").intValue = 10;
-            so.FindProperty("FireRate").floatValue = 4f;
-            so.FindProperty("ProjectilesPerShot").intValue = 1;
-            so.FindProperty("SpreadDegrees").floatValue = 1f;
-            so.FindProperty("ProjectileSpeed").floatValue = 18f;
-            so.FindProperty("ProjectileLifetime").floatValue = 1.5f;
-            so.FindProperty("Knockback").floatValue = 1f;
-            so.FindProperty("Recoil").floatValue = 0f;
-            so.FindProperty("Infinite").boolValue = true;
-            so.FindProperty("MagazineSize").intValue = 12;
-            so.FindProperty("ReloadSeconds").floatValue = 1.0f;
-            so.FindProperty("BurstCount").intValue = 1;
-            so.FindProperty("BurstInterval").floatValue = 0f;
-            so.FindProperty("ProjectilePrefab").objectReferenceValue = bulletPrefab;
-            so.ApplyModifiedPropertiesWithoutUndo();
-            EditorUtility.SetDirty(pistol);
-            AssetDatabase.SaveAssets();
-            return pistol;
+                var pistol = AssetDatabase.LoadAssetAtPath<WeaponData>(PistolAssetPath);
+                if (pistol == null)
+                {
+                    pistol = ScriptableObject.CreateInstance<WeaponData>();
+                    if (pistol == null)
+                    {
+                        Debug.LogError("[SmokeTestSetup] ScriptableObject.CreateInstance<WeaponData>() returned null.");
+                        return null;
+                    }
+                    AssetDatabase.CreateAsset(pistol, PistolAssetPath);
+                }
+
+                // Reflection — same reliability story as the WeaponHolder wiring.
+                SetPrivateField(pistol, "Id", "weapon_pistol");
+                SetPrivateField(pistol, "DisplayName", "Pistol");
+                SetPrivateField(pistol, "Mode", FireMode.SemiAuto);
+                SetPrivateField(pistol, "Damage", 10);
+                SetPrivateField(pistol, "FireRate", 4f);
+                SetPrivateField(pistol, "ProjectilesPerShot", 1);
+                SetPrivateField(pistol, "SpreadDegrees", 1f);
+                SetPrivateField(pistol, "ProjectileSpeed", 18f);
+                SetPrivateField(pistol, "ProjectileLifetime", 1.5f);
+                SetPrivateField(pistol, "Knockback", 1f);
+                SetPrivateField(pistol, "Recoil", 0f);
+                SetPrivateField(pistol, "Infinite", true);
+                SetPrivateField(pistol, "MagazineSize", 12);
+                SetPrivateField(pistol, "ReloadSeconds", 1.0f);
+                SetPrivateField(pistol, "BurstCount", 1);
+                SetPrivateField(pistol, "BurstInterval", 0f);
+                SetPrivateField(pistol, "ProjectilePrefab", bulletPrefab);
+
+                EditorUtility.SetDirty(pistol);
+                AssetDatabase.SaveAssets();
+                return pistol;
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[SmokeTestSetup] EnsurePistolAsset threw: {e}");
+                return null;
+            }
         }
 
         private static void WirePlayerInput(GameObject player)
