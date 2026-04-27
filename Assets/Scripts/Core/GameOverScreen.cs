@@ -12,6 +12,7 @@ namespace GunSlugsClone.Core
     {
         private bool _dead;
         private int _score;
+        private WaveSpawner _waveSpawner;
 
         private GUIStyle _titleStyle;
         private GUIStyle _hudLeft;
@@ -30,6 +31,13 @@ namespace GunSlugsClone.Core
             EventBus.Unsubscribe<EnemyKilledEvent>(OnKilled);
         }
 
+        private void Start()
+        {
+            // FindFirstObjectByType is fine here — a single WaveSpawner is in the
+            // scene and we only resolve it once at scene start.
+            _waveSpawner = FindFirstObjectByType<WaveSpawner>();
+        }
+
         private void OnKilled(EnemyKilledEvent e) => _score += e.ScoreReward;
         private void OnDied(PlayerDiedEvent e) => _dead = true;
 
@@ -39,8 +47,10 @@ namespace GunSlugsClone.Core
             var w = Screen.width;
             var h = Screen.height;
 
-            // Always-visible score
+            // Always-visible HUD: score top-left, wave below.
             GUI.Label(new Rect(20, 20, 320, 40), $"Score: {_score}", _hudLeft);
+            if (_waveSpawner != null)
+                GUI.Label(new Rect(20, 56, 320, 30), $"Wave: {_waveSpawner.CurrentWave} / {_waveSpawner.TotalWaves}", _hudLeft);
 
             if (!_dead) return;
 

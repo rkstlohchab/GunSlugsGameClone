@@ -25,6 +25,10 @@ namespace GunSlugsClone.Core
         [SerializeField] private float startDelay = 0.6f;
         [SerializeField] private float delayBetweenWaves = 1.5f;
 
+        [Header("Spawn Safety")]
+        [SerializeField] private Transform playerTransform;
+        [SerializeField, Min(0f)] private float minSpawnDistance = 5f;
+
         private int _currentWave = -1;
         private int _aliveCount;
         private bool _waitingForNext;
@@ -86,13 +90,43 @@ namespace GunSlugsClone.Core
             if (prefab == null || count <= 0) return anchorIdx;
             for (var i = 0; i < count; i++)
             {
-                var anchor = spawnAnchors[anchorIdx % spawnAnchors.Count];
+                var anchor = PickAnchor(anchorIdx);
                 anchorIdx++;
                 if (anchor == null) continue;
                 Instantiate(prefab, anchor.position, Quaternion.identity);
                 _aliveCount++;
             }
             return anchorIdx;
+        }
+
+        // Skip anchors that sit within minSpawnDistance of the player, so an
+        // enemy never materialises on the player's head. If every anchor is
+        // too close (e.g. player is standing in the middle of the only room
+        // we have anchors in), fall back to the anchor that's farthest away
+        // rather than any anchor at the start index.
+        private Transform PickAnchor(int startIdx)
+        {
+            if (spawnAnchors.Count == 0) return null;
+            if (playerTransform == null) return spawnAnchors[startIdx % spawnAnchors.Count];
+
+            for (var attempt = 0; attempt < spawnAnchors.Count; attempt++)
+            {
+                var anchor = spawnAnchors[(startIdx + attempt) % spawnAnchors.Count];
+                if (anchor == null) continue;
+                var sqrDist = ((Vector2)(anchor.position - playerTransform.position)).sqrMagnitude;
+                if (sqrDist >= minSpawnDistance * minSpawnDistance) return anchor;
+            }
+
+            Transform farthest = null;
+            var bestSqr = -1f;
+            for (var i = 0; i < spawnAnchors.Count; i++)
+            {
+                var a = spawnAnchors[i];
+                if (a == null) continue;
+                var sqr = ((Vector2)(a.position - playerTransform.position)).sqrMagnitude;
+                if (sqr > bestSqr) { bestSqr = sqr; farthest = a; }
+            }
+            return farthest;
         }
 
         private void OnEnemyKilled(EnemyKilledEvent _)

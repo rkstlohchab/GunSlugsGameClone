@@ -96,7 +96,7 @@ namespace GunSlugsClone.EditorTools
             // Wave-based spawning replaces the old static "spawn 2 enemies per
             // room" pass — the WaveSpawner watches EnemyKilledEvent and spawns
             // the next wave when all enemies are cleared.
-            CreateWaveSpawner(roomMiddle, roomLeft, roomRight);
+            CreateWaveSpawner(roomMiddle, roomLeft, roomRight, player.transform);
 
             CreateLootSpawner();
             CreateVfxSpawner();
@@ -259,7 +259,7 @@ namespace GunSlugsClone.EditorTools
             }
         }
 
-        private static void CreateWaveSpawner(GameObject roomMiddle, GameObject roomLeft, GameObject roomRight)
+        private static void CreateWaveSpawner(GameObject roomMiddle, GameObject roomLeft, GameObject roomRight, Transform playerTransform)
         {
             var go = new GameObject("WaveSpawner");
             var spawner = go.AddComponent<WaveSpawner>();
@@ -268,6 +268,9 @@ namespace GunSlugsClone.EditorTools
             var charger = AssetDatabase.LoadAssetAtPath<GameObject>(ChargerPrefabPath);
             if (grunt != null) SetPrivateField(spawner, "gruntPrefab", grunt);
             if (charger != null) SetPrivateField(spawner, "chargerPrefab", charger);
+
+            SetPrivateField(spawner, "playerTransform", playerTransform);
+            SetPrivateField(spawner, "minSpawnDistance", 5f);
 
             var anchors = new List<Transform>();
             CollectAnchors(roomMiddle, anchors);
