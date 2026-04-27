@@ -49,12 +49,12 @@ namespace GunSlugsClone.EditorTools
             ClearScene(scene);
 
             var camera = CreateCamera();
-            CreateGround();
+            CreateStarterRoom();
             var player = CreatePlayer();
             WirePlayerInput(player);
-            SpawnEnemy(player, new Vector3(5f, 0f, 0f));
-            SpawnEnemy(player, new Vector3(8f, 0f, 0f));
-            SpawnEnemy(player, new Vector3(-7f, 0f, 0f));
+            SpawnEnemy(player, new Vector3(6f, -4f, 0f));
+            SpawnEnemy(player, new Vector3(11f, -4f, 0f));
+            SpawnEnemy(player, new Vector3(-9f, -4f, 0f));
             AttachCameraFollow(camera, player.transform);
             CreateGameOverScreen();
 
@@ -119,14 +119,31 @@ namespace GunSlugsClone.EditorTools
             SetPrivateField(follow, "snapOnFirstFrame", true);
         }
 
-        private static void CreateGround()
+        // Builds a closed playable arena: floor + ceiling + two side walls. Used
+        // as a stop-gap for M2 rooms — once RoomTemplate prefabs and
+        // BiomeRunner are wired in we'll generate this from biome data instead.
+        private static void CreateStarterRoom()
         {
-            var go = new GameObject("Ground");
-            go.transform.position = new Vector3(0, -3, 0);
-            go.transform.localScale = new Vector3(20, 1, 1);
+            const float halfWidth = 15f;
+            const float halfHeight = 7f;
+
+            var room = new GameObject("Room");
+
+            BuildSlab(room.transform, "Floor",     new Vector3(0f, -halfHeight, 0f), new Vector3(halfWidth * 2f, 1f, 1f), new Color(0.42f, 0.70f, 0.34f));
+            BuildSlab(room.transform, "Ceiling",   new Vector3(0f,  halfHeight, 0f), new Vector3(halfWidth * 2f, 1f, 1f), new Color(0.25f, 0.28f, 0.32f));
+            BuildSlab(room.transform, "WallLeft",  new Vector3(-halfWidth, 0f, 0f),  new Vector3(1f, halfHeight * 2f, 1f), new Color(0.25f, 0.28f, 0.32f));
+            BuildSlab(room.transform, "WallRight", new Vector3( halfWidth, 0f, 0f),  new Vector3(1f, halfHeight * 2f, 1f), new Color(0.25f, 0.28f, 0.32f));
+        }
+
+        private static void BuildSlab(Transform parent, string name, Vector3 position, Vector3 scale, Color color)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(parent, worldPositionStays: false);
+            go.transform.position = position;
+            go.transform.localScale = scale;
             go.AddComponent<SpriteRenderer>();
             var ps = go.AddComponent<ProceduralSquare>();
-            SetSerializedColor(ps, new Color(0.42f, 0.70f, 0.34f));
+            SetSerializedColor(ps, color);
             var col = go.AddComponent<BoxCollider2D>();
             col.size = new Vector2(1f, 1f);
         }

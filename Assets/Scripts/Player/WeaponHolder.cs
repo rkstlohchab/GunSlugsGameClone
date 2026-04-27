@@ -53,7 +53,13 @@ namespace GunSlugsClone.Player
 
         public void SetTriggerHeld(bool held)
         {
-            if (held && !_triggerHeld) _triggerJustPressed = true;
+            // Don't gate _triggerJustPressed on a false→true edge: with PlayerInput
+            // SendMessages mode, the release event isn't always delivered for
+            // rapid taps, so _triggerHeld can stay 'true' across multiple presses
+            // and the edge check would silently swallow every shot after the first.
+            // Treat any held=true notification as a fresh press; WeaponBase's own
+            // cooldown still gates the actual fire rate.
+            if (held) _triggerJustPressed = true;
             _triggerHeld = held;
         }
         public void SetAimDirection(Vector2 dir) => _aim = dir;
