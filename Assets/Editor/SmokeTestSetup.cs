@@ -5,6 +5,7 @@ using GunSlugsClone.Core;
 using GunSlugsClone.Enemies;
 using GunSlugsClone.Enemies.AI;
 using GunSlugsClone.Player;
+using GunSlugsClone.Procedural;
 using GunSlugsClone.Weapons;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -27,6 +28,7 @@ namespace GunSlugsClone.EditorTools
         private const string PistolAssetPath  = "Assets/ScriptableObjects/Weapons/weapon_pistol.asset";
         private const string EnemyDataPath   = "Assets/ScriptableObjects/Enemies/enemy_grunt.asset";
         private const string EnemyPrefabPath  = "Assets/Prefabs/Enemy_Grunt.prefab";
+        private const string RoomPrefabPath   = "Assets/Prefabs/RoomTemplate_Standard.prefab";
 
         private const string KenneySource = "/Users/raksithlochabb/Downloads/kenneypack/kenney_pixel-platformer";
         private const string KenneyDest   = "Assets/Art/Kenney";
@@ -40,7 +42,7 @@ namespace GunSlugsClone.EditorTools
             ("Tiles/Characters/tile_0000.png", "character_player.png", 24),
             ("Tiles/Characters/tile_0024.png", "character_enemy.png",  24),
             ("Tiles/tile_0006.png",            "tile_floor.png",       18),
-            ("Tiles/tile_0021.png",            "tile_wall.png",        18),
+            ("Tiles/tile_0020.png",            "tile_wall.png",        18),
         };
 
         [MenuItem("GunSlugs/Build Smoke Test Scene")]
@@ -60,17 +62,17 @@ namespace GunSlugsClone.EditorTools
             EnsureBulletPrefab();
             EnsurePistolAsset();
             EnsureEnemyAssets();
+            EnsureRoomTemplatePrefab();
 
             var scene = OpenOrCreateScene();
             ClearScene(scene);
 
             var camera = CreateCamera();
-            CreateStarterRoom();
+            var roomGo = InstantiateRoom(Vector3.zero);
             var player = CreatePlayer();
+            PositionPlayerAtRoomSpawn(player, roomGo);
             WirePlayerInput(player);
-            SpawnEnemy(player, new Vector3(6f, -4f, 0f));
-            SpawnEnemy(player, new Vector3(11f, -4f, 0f));
-            SpawnEnemy(player, new Vector3(-9f, -4f, 0f));
+            SpawnEnemiesAtRoomAnchors(player, roomGo);
             AttachCameraFollow(camera, player.transform);
             CreateGameOverScreen();
 
@@ -135,23 +137,123 @@ namespace GunSlugsClone.EditorTools
             SetPrivateField(follow, "snapOnFirstFrame", true);
         }
 
-        // Builds a closed playable arena: floor + ceiling + two side walls. Used
-        // as a stop-gap for M2 rooms — once RoomTemplate prefabs and
-        // BiomeRunner are wired in we'll generate this from biome data instead.
-        private static void CreateStarterRoom()
+        // Authors Assets/Prefabs/RoomTemplate_Standard.prefab — a real
+        // RoomTemplate prefab with floor + ceiling + side walls (with door
+        // gaps), DoorSocket components on each side, a player spawn anchor,
+        // and three enemy spawn anchors. M2 next steps swap multiple
+        // RoomTemplate variants into a BiomeConfig SO and let LevelGenerator
+        // stitch them via the door sockets.
+        private static void EnsureRoomTemplatePrefab()
         {
-            const float halfWidth = 15f;
-            const float halfHeight = 7f;
+            try
+            {
+                EnsureFolder("Assets/Prefabs");
+                if (AssetDatabase.LoadMainAssetAtPath(RoomPrefabPath) != null)
+                    AssetDatabase.DeleteAsset(RoomPrefabPath);
 
-            var floorSprite = LoadKenneySprite("tile_floor.png");
-            var wallSprite  = LoadKenneySprite("tile_wall.png");
+                const float halfWidth = 15f;
+                const float halfHeight = 7f;
+                const float doorHalf = 2f; // door gap is 4 units tall, centered at room mid
 
-            var room = new GameObject("Room");
+                var floorSprite = LoadKenneySprite("tile_floor.png");
+                var wallSprite  = LoadKenneySprite("tile_wall.png");
 
-            BuildSlab(room.transform, "Floor",     new Vector3(0f, -halfHeight, 0f), new Vector2(halfWidth * 2f, 1f), new Color(0.42f, 0.70f, 0.34f), floorSprite);
-            BuildSlab(room.transform, "Ceiling",   new Vector3(0f,  halfHeight, 0f), new Vector2(halfWidth * 2f, 1f), new Color(0.25f, 0.28f, 0.32f), wallSprite);
-            BuildSlab(room.transform, "WallLeft",  new Vector3(-halfWidth, 0f, 0f),  new Vector2(1f, halfHeight * 2f), new Color(0.25f, 0.28f, 0.32f), wallSprite);
-            BuildSlab(room.transform, "WallRight", new Vector3( halfWidth, 0f, 0f),  new Vector2(1f, halfHeight * 2f), new Color(0.25f, 0.28f, 0.32f), wallSprite);
+                var room = new GameObject("RoomTemplate_Standard");
+                var rt = room.AddComponent<RoomTemplate>();
+                SetPrivateField(rt, "templateId", "room_standard");
+                SetPrivateField(rt, "biomeTag", "biome_starter");
+                SetPrivateField(rt, "size", new Vector2(halfWidth * 2f, halfHeight * 2f));
+
+                // Top + bottom slabs span the full width.
+                BuildSlab(room.transform, "Floor",   new Vector3(0f, -halfHeight, 0f), new Vector2(halfWidth * 2f, 1f), new Color(0.42f, 0.70f, 0.34f), floorSprite);
+                BuildSlab(room.transform, "Ceiling", new Vector3(0f,  halfHeight, 0f), new Vector2(halfWidth * 2f, 1f), new Color(0.25f, 0.28f, 0.32f), wallSprite);
+
+                // Side walls are split into top + bottom halves with a door gap in the middle.
+                var sideHalf = (halfHeight - doorHalf) * 0.5f;
+                BuildSlab(room.transform, "WallLeftTop",     new Vector3(-halfWidth,  doorHalf + sideHalf, 0f), new Vector2(1f, sideHalf * 2f), new Color(0.25f, 0.28f, 0.32f), wallSprite);
+                BuildSlab(room.transform, "WallLeftBottom",  new Vector3(-halfWidth, -doorHalf - sideHalf, 0f), new Vector2(1f, sideHalf * 2f), new Color(0.25f, 0.28f, 0.32f), wallSprite);
+                BuildSlab(room.transform, "WallRightTop",    new Vector3( halfWidth,  doorHalf + sideHalf, 0f), new Vector2(1f, sideHalf * 2f), new Color(0.25f, 0.28f, 0.32f), wallSprite);
+                BuildSlab(room.transform, "WallRightBottom", new Vector3( halfWidth, -doorHalf - sideHalf, 0f), new Vector2(1f, sideHalf * 2f), new Color(0.25f, 0.28f, 0.32f), wallSprite);
+
+                // Door sockets — purely metadata for now; LevelGenerator uses
+                // them later to stitch rooms together.
+                var doors = new List<DoorSocket>
+                {
+                    AddDoorSocket(room.transform, "DoorEast", new Vector3( halfWidth, 0f, 0f), DoorDirection.East),
+                    AddDoorSocket(room.transform, "DoorWest", new Vector3(-halfWidth, 0f, 0f), DoorDirection.West),
+                };
+                SetPrivateField(rt, "doors", doors);
+
+                // Player spawn anchor.
+                var playerSpawn = new GameObject("PlayerSpawn");
+                playerSpawn.transform.SetParent(room.transform, worldPositionStays: false);
+                playerSpawn.transform.localPosition = new Vector3(0f, -3f, 0f);
+                SetPrivateField(rt, "playerSpawn", playerSpawn.transform);
+
+                // Three enemy spawn anchors spaced along the floor.
+                var enemySpawns = new List<Transform>();
+                var positions = new[]
+                {
+                    new Vector3(-7f, -5f, 0f),
+                    new Vector3( 0f, -5f, 0f),
+                    new Vector3( 7f, -5f, 0f),
+                };
+                for (var i = 0; i < positions.Length; i++)
+                {
+                    var es = new GameObject($"EnemySpawn_{i}");
+                    es.transform.SetParent(room.transform, worldPositionStays: false);
+                    es.transform.localPosition = positions[i];
+                    enemySpawns.Add(es.transform);
+                }
+                SetPrivateField(rt, "enemySpawns", enemySpawns);
+
+                PrefabUtility.SaveAsPrefabAsset(room, RoomPrefabPath);
+                Object.DestroyImmediate(room);
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[SmokeTestSetup] EnsureRoomTemplatePrefab threw: {e}");
+            }
+        }
+
+        private static DoorSocket AddDoorSocket(Transform parent, string name, Vector3 localPos, DoorDirection direction)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(parent, worldPositionStays: false);
+            go.transform.localPosition = localPos;
+            var ds = go.AddComponent<DoorSocket>();
+            SetPrivateField(ds, "direction", direction);
+            return ds;
+        }
+
+        private static GameObject InstantiateRoom(Vector3 position)
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(RoomPrefabPath);
+            if (prefab == null)
+            {
+                Debug.LogError($"[SmokeTestSetup] RoomTemplate prefab missing at {RoomPrefabPath}");
+                return null;
+            }
+            var go = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+            go.transform.position = position;
+            return go;
+        }
+
+        private static void PositionPlayerAtRoomSpawn(GameObject player, GameObject roomGo)
+        {
+            if (player == null || roomGo == null) return;
+            if (!roomGo.TryGetComponent<RoomTemplate>(out var rt) || rt.PlayerSpawn == null) return;
+            player.transform.position = rt.PlayerSpawn.position;
+        }
+
+        private static void SpawnEnemiesAtRoomAnchors(GameObject player, GameObject roomGo)
+        {
+            if (roomGo == null || !roomGo.TryGetComponent<RoomTemplate>(out var rt)) return;
+            foreach (var anchor in rt.EnemySpawns)
+            {
+                if (anchor == null) continue;
+                SpawnEnemy(player, anchor.position);
+            }
         }
 
         private static void BuildSlab(Transform parent, string name, Vector3 position, Vector2 size, Color fallbackColor, Sprite tileSprite)
