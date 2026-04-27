@@ -299,17 +299,31 @@ namespace GunSlugsClone.EditorTools
                     var dstPath = $"{KenneyDest}/{dst}";
                     var importer = AssetImporter.GetAtPath(dstPath) as TextureImporter;
                     if (importer == null) continue;
+
+                    // Need to read+write through TextureImporterSettings to set
+                    // spriteMeshType. SpriteMeshType.Tight (default) clips
+                    // transparent pixels off the mesh, which breaks
+                    // SpriteDrawMode.Tiled — Unity logs the
+                    // 'Sprite Tiling might not appear correctly' warning. FullRect
+                    // forces a quad mesh that tiles cleanly.
+                    var settings = new TextureImporterSettings();
+                    importer.ReadTextureSettings(settings);
+
                     var alreadyConfigured =
                         importer.textureType == TextureImporterType.Sprite &&
                         Mathf.Approximately(importer.spritePixelsPerUnit, ppu) &&
-                        importer.filterMode == FilterMode.Point;
+                        importer.filterMode == FilterMode.Point &&
+                        settings.spriteMeshType == SpriteMeshType.FullRect;
                     if (alreadyConfigured) continue;
-                    importer.textureType = TextureImporterType.Sprite;
-                    importer.spriteImportMode = SpriteImportMode.Single;
-                    importer.spritePixelsPerUnit = ppu;
-                    importer.filterMode = FilterMode.Point;
-                    importer.mipmapEnabled = false;
-                    importer.wrapMode = TextureWrapMode.Clamp;
+
+                    settings.textureType = TextureImporterType.Sprite;
+                    settings.spriteMode = (int)SpriteImportMode.Single;
+                    settings.spritePixelsPerUnit = ppu;
+                    settings.filterMode = FilterMode.Point;
+                    settings.mipmapEnabled = false;
+                    settings.wrapMode = TextureWrapMode.Clamp;
+                    settings.spriteMeshType = SpriteMeshType.FullRect;
+                    importer.SetTextureSettings(settings);
                     importer.SaveAndReimport();
                 }
             }
